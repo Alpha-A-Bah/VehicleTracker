@@ -1,0 +1,9 @@
+# Ignore database file
+database.db
+
+# Ignore Python cache
+__pycache__/
+
+# Ignore virtual environments
+venv/
+.env/
