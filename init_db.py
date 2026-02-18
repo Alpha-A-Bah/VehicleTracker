@@ -13,9 +13,9 @@ CREATE TABLE IF NOT EXISTS vehicles (
                current_user TEXT,
                current_mileage INTEGER,
                last_checkin TEXT,
-               last_checkout TEXT,
+               last_checkout TEXT
                      
-               )
+               );
 """)
 
 connection.commit()
