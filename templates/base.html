@@ -2,55 +2,70 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ title }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Vehicle Tracker{% endblock %}</title>
 
-    <!-- Bootstrap -->
+    <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 
     <style>
         .logo {
-            height: 40px;
+            height: 60px;
         }
     </style>
 </head>
 
-<body class="bg-dark">
+<body class="bg-light">
 
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
         <div class="container-fluid">
-
-            <!-- Logo + Brand -->
-            <a class="navbar-brand d-flex align-items-center" href="/">
-                <img src="/static/changan_logo.png" class="logo me-2">
-                Vehicle Tracker
-            </a>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
+
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="/">Home</a>
+                        <a class="nav-link" href="/">Vehicle Booking</a>
                     </li>
+
                     <li class="nav-item">
                         <a class="nav-link" href="/vehicles">Vehicles</a>
                     </li>
+
                     <li class="nav-item">
-                        <a class="nav-link" href="/add_vehicle">Add Vehicle</a>
+                        <a class="nav-link" href="/bookings">Booking History</a>
                     </li>
                 </ul>
-            </div>
 
+                <div class="ms-auto d-flex align-items-center">
+                    <img src="{{ url_for('static', filename='logo.png') }}" class="logo">
+                </div>
+
+            </div>
         </div>
     </nav>
 
-    <!-- Page Content -->
+    <!-- FLASH MESSAGES -->
+    <div class="container mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- MAIN CONTENT -->
     <div class="container py-4">
-        {% block content %}
-        {% endblock %}
+        {% block content %}{% endblock %}
     </div>
 
     <!-- Bootstrap JS -->

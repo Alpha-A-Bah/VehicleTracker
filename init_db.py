@@ -1,6 +1,6 @@
 import sqlite3
 
-connection = sqlite3.connect("database.db")
+connection = sqlite3.connect("database.db", timeout=5)
 cursor = connection.cursor()
 
 cursor.execute("""
