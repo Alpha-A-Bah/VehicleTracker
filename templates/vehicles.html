@@ -9,209 +9,177 @@
             Add Vehicle
         </button>
 
-     
+     <table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Registration</th>
+            <th>VIN</th>
+            <th>Model</th>
+            <th>Status</th>
+            <th>Current User</th>
+            <th>Mileage</th>
+            <th>Owner</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
 
+    <tbody>
+        {% for v in vehicles %}
+        <tr>
+            <td>{{ v[0] }}</td>
+            <td>{{ v[1] }}</td>
+            <td>{{ v[2] }}</td>
+            <td>{{ v[3] }}</td>
+            <td>{{ v[4] }}</td>
+            <td>{{ v[5] }}</td>
+            <td>{{ v[6] }}</td>
+            <td>{{ v[9] }}</td>
 
-        <table class="table table-striped table-bordered">
-            <thead class="table-dark">
-                <tr>
-                    <th>ID</th>
-                    <th>Registration</th>
-                    <th>VIN</th>
-                    <th>Model</th>
-                    <th>Status</th>
-                    <th>Current User</th>
-                    <th>Mileage</th>
-                    <th>Owner</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
+            <td>
+                <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editVehicleModal{{ v[0] }}">Edit</button>
+                <a href="/logbook?vehicle_id={{ v[0] }}" class="btn btn-primary btn-sm">View Logbook</a>
 
-            <tbody>
-                {% for v in vehicles %}
-                <tr>
-                    <td>{{ v[0] }}</td>
-                    <td>{{ v[1] }}</td>
-                    <td>{{ v[2] }}</td>
-                    <td>{{ v[3] }}</td>
-                    <td>
-                        {% if v[4] == "Available" %}
-                            <span class="badge bg-success">Available</span>
-                        {% elif v[4] == "checked_out" %}
-                            <span class="badge bg-danger">Checked Out</span>
-                        {% elif v[4] == "maintenance" %}
-                            <span class="badge bg-warning text-dark">Maintenance</span>
-                        {% else %}
-                            <span class="badge bg-secondary">{{ v[4] }}</span>
-                        {% endif %}
-                    </td>
+                <form method="POST" action="/delete_vehicle/{{ v[0] }}" style="display:inline;">
+                    <button class="btn btn-danger btn-sm">Delete</button>
+                </form>
+            </td>
+        </tr>
 
-                    <td>{{ v[5] }}</td>
-                    <td>{{ v[6] }}</td>
-                    <td>{{ v[9] }}</td>
+        <!-- EDIT VEHICLE MODAL -->
+        <div class="modal fade" id="editVehicleModal{{ v[0] }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
 
-                    <td>
-                        <button class="btn btn-warning btn-sm"
-                                data-bs-toggle="modal"
-                                data-bs-target="#editVehicleModal{{ v[0] }}">
-                            Edit
-                        </button>
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Vehicle</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
 
-                        <a href="/logbook?vehicle_id={{ v[0] }}" 
-                        class="btn btn-info btn-sm"> 
-                        View Logbook
-                     </a>
+                    <form method="POST" action="/edit_vehicle/{{ v[0] }}">
+                        <div class="modal-body">
 
-                        <button class="btn btn-danger btn-sm"
-                                data-bs-toggle="modal"
-                                data-bs-target="#confirmDeleteModal{{ v[0] }}">
-                            Delete
-                        </button>
-                    </td>
-
-
-
-                </tr>
-                <div class="modal fade" id="confirmDeleteModal{{ v[0] }}" tabindex="-1">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content">
-
-                            <div class="modal-header">
-                                <h5 class="modal-title">Confirm Delete</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            <div class="mb-3">
+                                <label class="form-label">Registration</label>
+                                <input type="text" name="reg" class="form-control" value="{{ v[1] }}" required>
                             </div>
 
-                            <div class="modal-body">
-                                Are you sure you want to delete vehicle <strong>{{ v[1] }}</strong>?
+                            <div class="mb-3">
+                                <label class="form-label">VIN</label>
+                                <input type="text" name="vin" class="form-control" value="{{ v[2] }}" required>
                             </div>
 
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <div class="mb-3">
+                                <label class="form-label">Model</label>
+                                <input type="text" name="model" class="form-control" value="{{ v[3] }}" required>
+                            </div>
 
-                                <form method="POST" action="/delete_vehicle/{{ v[0] }}">
-                                    <button type="submit" class="btn btn-danger">Delete</button>
-                                </form>
+                            <div class="mb-3">
+                                <label class="form-label">Status</label>
+                                <select name="status" class="form-select">
+                                    <option value="Available"   {% if v[4] == "Available" %}selected{% endif %}>Available</option>
+                                    <option value="checked_out" {% if v[4] == "checked_out" %}selected{% endif %}>Checked Out</option>
+                                    <option value="maintenance" {% if v[4] == "maintenance" %}selected{% endif %}>Maintenance</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Mileage</label>
+                                <input type="number" name="mileage" class="form-control" value="{{ v[6] }}" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Owner Name</label>
+                                <input type="text" name="owner" class="form-control" value="{{ v[9] }}" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Owner Email</label>
+                                <input type="email" name="owner_email" class="form-control" value="{{ v[10] }}" required>
                             </div>
 
                         </div>
-                    </div>
-                </div>
 
-                <div class="modal fade" id="editVehicleModal{{ v[0] }}" tabindex="-1">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-
-                            <div class="modal-header">
-                                <h5 class="modal-title">Edit Vehicle</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-
-                            <form method="POST" action="/edit_vehicle/{{ v[0] }}">
-                                <div class="modal-body">
-
-                                    <div class="mb-3">
-                                        <label class="form-label">Registration</label>
-                                        <input type="text" name="reg" class="form-control" value="{{ v[1] }}" required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label">VIN</label>
-                                        <input type="text" name="vin" class="form-control" value="{{ v[2] }}" required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label">Model</label>
-                                        <input type="text" name="model" class="form-control" value="{{ v[3] }}" required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label">Status</label>
-                                        <select name="status" class="form-select">
-                                            <option value="Available"   {% if v[4] == "Available" %}selected{% endif %}>Available</option>
-                                            <option value="checked_out" {% if v[4] == "checked_out" %}selected{% endif %}>Checked Out</option>
-                                            <option value="maintenance" {% if v[4] == "maintenance" %}selected{% endif %}>Maintenance</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label">Mileage</label>
-                                        <input type="number" name="mileage" class="form-control" value="{{ v[6] }}" required>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label">Owner</label>
-                                        <input type="text" name="owner" class="form-control" value="{{ v[9] }}">
-                                    </div>
-
-
-                                </div>
-
-                                <div class="modal-footer">
-                                    <button type="submit" class="btn btn-success">Save Changes</button>
-                                </div>
-                            </form>
-
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-success">Save Changes</button>
                         </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+
+        {% endfor %}
+    </tbody>
+</table>
+
+
+<!-- ADD VEHICLE MODAL (MUST BE OUTSIDE THE TABLE) -->
+<div class="modal fade" id="addVehicleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Add Vehicle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <form method="POST" action="/add_vehicle">
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label class="form-label">Registration</label>
+                        <input type="text" name="reg" class="form-control" required>
                     </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">VIN</label>
+                        <input type="text" name="vin" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Model</label>
+                        <input type="text" name="model" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select">
+                            <option value="Available">Available</option>
+                            <option value="checked_out">Checked Out</option>
+                            <option value="maintenance">Maintenance</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Mileage</label>
+                        <input type="number" name="mileage" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Owner Name</label>
+                        <input type="text" name="owner" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Owner Email</label>
+                        <input type="email" name="owner_email" class="form-control" required>
+                    </div>
+
                 </div>
 
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Save Vehicle</button>
+                </div>
+            </form>
 
-                    
-
-
-                {% endfor %}
-
-                
-            </tbody>
-        </table>
-        <div class="modal fade" id="addVehicleModal" tabindex="-1">
-                            <div class="modal-dialog">
-                            <div class="modal-content">
-
-                            <div class="modal-header">
-                                <h5 class="modal-title">Add Vehicle</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-
-                            <form method="POST" action="/add_vehicle">
-                                <div class="modal-body">
-
-                                <div class="mb-3">
-                                    <label class="form-label">Registration</label>
-                                    <input type="text" name="reg" class="form-control" required>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">VIN</label>
-                                    <input type="text" name="vin" class="form-control" required>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Model</label>
-                                    <input type="text" name="model" class="form-control" required>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Status</label>
-                                    <select name="status" class="form-select">
-                                    <option value="available">Available</option>
-                                    <option value="checked_out">Checked Out</option>
-                                    <option value="maintenance">Maintenance</option>
-                                    </select>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Mileage</label>
-                                    <input type="number" name="mileage" class="form-control" required>
-                                </div>
-
-                                </div>
-
-                                <div class="modal-footer">
-                                <button type="submit" class="btn btn-success">Save Vehicle</button>
-                                </div>
-                                </form>
+        </div>
     </div>
+</div>
+
+
+
+        
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

@@ -162,20 +162,26 @@ def add_vehicle():
     model = request.form["model"]
     status = request.form["status"]
     mileage = request.form["mileage"]
+    owner = request.form["owner"]
+    owner_email = request.form["owner_email"]
 
     connection = sqlite3.connect("database.db")
     cursor = connection.cursor()
 
     cursor.execute("""
-        INSERT INTO vehicles (reg, vin, model, status, current_user, current_mileage, last_checkin, last_checkout)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (reg, vin, model, status, None, mileage, None, None))
+        INSERT INTO vehicles (
+            reg, vin, model, status, current_user, current_mileage,
+            last_checkin, last_checkout, owner, owner_email
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (reg, vin, model, status, None, mileage, None, None, owner, owner_email))
 
     connection.commit()
     connection.close()
 
     flash("Vehicle added successfully!")
     return redirect("/vehicles")
+
 
 @app.route("/delete_vehicle/<int:vehicle_id>", methods=["POST"])
 def delete_vehicle(vehicle_id):
@@ -197,21 +203,23 @@ def edit_vehicle(vehicle_id):
     status = request.form["status"]
     mileage = request.form["mileage"]
     owner = request.form["owner"]
+    owner_email = request.form["owner_email"]
 
     connection = sqlite3.connect("database.db")
     cursor = connection.cursor()
 
     cursor.execute("""
         UPDATE vehicles
-        SET reg = ?, vin = ?, model = ?, status = ?, current_mileage = ?, owner = ?
+        SET reg = ?, vin = ?, model = ?, status = ?, current_mileage = ?, owner = ?, owner_email = ?
         WHERE id = ?
-    """, (reg, vin, model, status, mileage, owner, vehicle_id))
+    """, (reg, vin, model, status, mileage, owner, owner_email, vehicle_id))
 
     connection.commit()
     connection.close()
 
     flash("Vehicle updated successfully!", "success")
     return redirect("/vehicles")
+
 
 @app.route("/")
 @login_required
@@ -704,9 +712,6 @@ def approve_confirm():
             )
         """, (token,))
 
-
-
-   
 
     conn.commit()
     conn.close()
