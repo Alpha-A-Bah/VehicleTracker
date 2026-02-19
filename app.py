@@ -1,8 +1,11 @@
-from flask import Flask, render_template, request, redirect, flash, session
+from flask import Flask, render_template, request, redirect, flash, session, url_for
 from functools import wraps
 from dotenv import load_dotenv
 import os
 import msal
+import sqlite3
+from datetime import datetime
+import secrets
 import sqlite3
 from datetime import datetime
 
@@ -16,10 +19,115 @@ AUTHORITY = os.getenv("AUTHORITY")
 SCOPE = [os.getenv("SCOPE")]
 
 
-print("CLIENT SECRET IN FLASK:", repr(CLIENT_SECRET))
+import requests
+from flask import session
 
-import sqlite3
-from datetime import datetime
+import smtplib
+from email.mime.text import MIMEText
+
+def send_email_smtp(to_email, subject, body):
+    smtp_server = "smtp.office365.com"
+    smtp_port = 587
+
+    username = session["user"]["email"]
+    password = "zlwcqrdmskchhfrn"  # paste the 16‑digit app password
+
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = username
+    msg["To"] = to_email
+
+    try:
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(username, password)
+        server.sendmail(username, [to_email], msg.as_string())
+        server.quit()
+        print("SMTP email sent successfully")
+        return True
+    except Exception as e:
+        print("SMTP ERROR:", e)
+        return False
+
+
+def send_email_via_graph(to_email, subject, body):
+    access_token = session.get("access_token")
+
+    # Step 1: Create the draft message
+    create_url = "https://graph.microsoft.com/v1.0/me/messages"
+
+    message = {
+        "subject": subject,
+        "body": {
+            "contentType": "Text",
+            "content": body
+        },
+        "toRecipients": [
+            {"emailAddress": {"address": to_email}}
+        ]
+    }
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    create_response = requests.post(create_url, headers=headers, json=message)
+    print("GRAPH CREATE RESPONSE:", create_response.status_code, create_response.text)
+
+    if create_response.status_code not in (200, 201):
+        return False
+
+    message_id = create_response.json().get("id")
+
+    # Step 2: Send the draft
+    send_url = f"https://graph.microsoft.com/v1.0/me/messages/{message_id}/send"
+    send_response = requests.post(send_url, headers=headers)
+    print("GRAPH SEND RESPONSE:", send_response.status_code, send_response.text)
+
+    return send_response.status_code in (202, 204)
+
+def send_approval_email(to_email, booking_id, token):
+    subject = "Vehicle Booking Approval Required"
+
+    body = f"""
+A new vehicle booking requires your approval.
+
+Booking ID: {booking_id}
+
+Approve or reject here:
+http://localhost:5000/approve?token={token}
+
+This is an automated message from the Vehicle Tracker system.
+"""
+
+    send_email_smtp(to_email, subject, body)
+
+
+
+
+
+
+def send_requester_notification(to_email, decision, reason):
+    subject = f"Your Booking Has Been {decision.capitalize()}"
+
+    body = f"""
+Your vehicle booking has been {decision}.
+
+Rejection reason (if any):
+{reason}
+
+This is an automated message from the Vehicle Tracker system.
+"""
+
+    send_email_smtp(to_email, subject, body)
+
+
+
+import requests
+from flask import session
+
+
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -112,8 +220,15 @@ def booking_page():
     cursor = connection.cursor()
 
     # Available vehicles
-    cursor.execute("SELECT * FROM vehicles WHERE status = 'Available'")
+    cursor.execute("""
+    SELECT * FROM vehicles
+    WHERE id NOT IN (
+        SELECT vehicle_id FROM bookings
+        WHERE status IN ('pending', 'approved')
+    )
+    """)
     available = cursor.fetchall()
+
 
     cursor.execute("""
     SELECT 
@@ -123,55 +238,114 @@ def booking_page():
         vehicles.model,
         bookings.name,
         bookings.time_out,
-        vehicles.current_mileage           
+        vehicles.current_mileage
     FROM bookings
     JOIN vehicles ON vehicles.id = bookings.vehicle_id
-    WHERE vehicles.status = 'Booked Out' AND bookings.time_in IS NULL
+    WHERE bookings.status = 'approved'
+    AND bookings.time_in IS NULL
     """)
     active_bookings = cursor.fetchall()
 
+
+    cursor.execute("""
+        SELECT id, name, purpose, start_time, end_time, owner, requester_email
+        FROM bookings
+        WHERE status = 'pending'
+        ORDER BY start_time ASC
+    """)
+    pending = cursor.fetchall()
 
 
     connection.close()
 
     return render_template("home.html",
                            available=available,
-                           active_bookings=active_bookings)
+                           active_bookings=active_bookings, pending=pending)
+
+from flask import session
 
 @app.route("/checkout_vehicle/<int:vehicle_id>", methods=["POST"])
 def checkout_vehicle(vehicle_id):
+    # 🔒 Optional: enforce login
+    if "user" not in session:
+        flash("You must be logged in to book a vehicle.", "danger")
+        return redirect("/login")
+
     name = request.form["name"]
     purpose = request.form["purpose"]
     start_time = request.form["start_time"]
     end_time = request.form["end_time"]
-    owner = request.form["owner"]
     destination = request.form.get("destination", "")
+
+    # ⭐ Get requester email from Azure login
+    user_claims = session["user"]
+    requester_email = (
+        user_claims.get("email")
+        or user_claims.get("preferred_username")
+        or user_claims.get("upn")
+    )
 
     start_time = datetime.fromisoformat(start_time).strftime("%Y-%m-%d %H:%M:%S")
     end_time = datetime.fromisoformat(end_time).strftime("%Y-%m-%d %H:%M:%S")
     time_out = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    approval_token = secrets.token_urlsafe(32)
+
     connection = sqlite3.connect("database.db", timeout=5)
     cursor = connection.cursor()
 
-    # Insert booking record
-    cursor.execute("""
-        INSERT INTO bookings (vehicle_id, name, purpose, start_time, end_time, destination, owner, time_out)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (vehicle_id, name, purpose, start_time, end_time, destination, owner, time_out))
+    # Get vehicle owner email
+    cursor.execute("SELECT owner_email FROM vehicles WHERE id = ?", (vehicle_id,))
+    row = cursor.fetchone()
+    owner_email = row[0] if row else None
 
-    # Update vehicle status
+    # Insert booking with requester_email
     cursor.execute("""
-        UPDATE vehicles
-        SET status = 'Booked Out', current_user = ?
-        WHERE id = ?
-    """, (name, vehicle_id))
+        INSERT INTO bookings (
+        vehicle_id,
+        name,
+        purpose,
+        start_time,
+        end_time,
+        destination,
+        owner,
+        time_out,
+        status,
+        approval_token,
+        requester_email
+    )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        vehicle_id,
+        name,
+        purpose,
+        start_time,
+        end_time,
+        destination,
+        owner_email,
+        time_out,
+        "pending",
+        approval_token,
+        requester_email
+    ))
+
+
+    booking_id = cursor.lastrowid
+
+    # Send approval email to vehicle owner
+    send_approval_email(
+        to_email=owner_email,
+        booking_id=booking_id,
+        token=approval_token
+    )
 
     connection.commit()
     connection.close()
 
-    flash("Vehicle checked out successfully!", "success")
+    flash("Vehicle checked out successfully! Awaiting approval.", "success")
     return redirect("/")
+
+
 
 
 @app.route("/checkin_vehicle/<int:booking_id>", methods=["POST"])
@@ -341,13 +515,14 @@ def login():
     )
 
     auth_url = msal_app.get_authorization_request_url(
-    scopes=SCOPE,
-    redirect_uri=request.host_url.rstrip("/") + REDIRECT_PATH
-)
-
-    
+        scopes=SCOPE if isinstance(SCOPE, list) else SCOPE.split(),
+        redirect_uri=request.host_url.rstrip("/") + REDIRECT_PATH,
+        prompt="select_account"   # ⭐ Force fresh login
+    )
 
     return redirect(auth_url)
+
+
 
 @app.route(REDIRECT_PATH)
 def authorized():
@@ -359,13 +534,17 @@ def authorized():
 
     code = request.args.get("code")
 
+    # ⭐ Split scopes so MSAL gets both User.Read and Mail.Send
     result = msal_app.acquire_token_by_authorization_code(
-        code,
-        scopes=SCOPE,
-        redirect_uri=request.host_url.rstrip("/") + REDIRECT_PATH
-    )
+    code,
+    scopes=SCOPE if isinstance(SCOPE, list) else SCOPE.split(),
+    redirect_uri=request.host_url.rstrip("/") + REDIRECT_PATH
+)
+
 
     print("MSAL RESULT:", result)
+    print("RESULT KEYS:", result.keys())
+    print("ACCESS TOKEN:", result.get("access_token"))
 
 
     if "id_token_claims" in result:
@@ -373,9 +552,14 @@ def authorized():
             "name": result["id_token_claims"]["name"],
             "email": result["id_token_claims"]["preferred_username"]
         }
+
+        # ⭐ Store access token for sending email later
+        session["access_token"] = result["access_token"]
+
         return redirect("/")
 
     return "Login failed", 401
+
 
 
 
@@ -394,6 +578,152 @@ def add_header(response):
     if 'logo.png' in request.path:
         response.headers['Cache-Control'] = 'public, max-age=31536000'
     return response
+
+@app.route("/approve", methods=["GET", "POST"])
+def approve_page():
+    token = request.args.get("token")
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    # Fetch booking using the token
+    cursor.execute("""
+        SELECT id, name, purpose, start_time, end_time, destination, requester_email
+        FROM bookings
+        WHERE approval_token = ?
+    """, (token,))
+    booking = cursor.fetchone()
+
+    if not booking:
+        conn.close()
+        return "Invalid or expired approval link."
+
+    booking_id, name, purpose, start_time, end_time, destination, requester_email = booking
+
+    # Handle Approve / Reject
+    if request.method == "POST":
+        decision = request.form.get("decision")
+        reason = request.form.get("reason", "")
+
+        if decision == "approve":
+            cursor.execute("""
+                UPDATE bookings
+                SET status = 'approved',
+                    rejection_reason = NULL,
+                    approved_by = ?,
+                    approved_at = ?
+                WHERE id = ?
+            """, (
+                session["user"]["email"],                 # approver
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                booking_id
+            ))
+
+            conn.commit()
+            conn.close()
+
+            # Notify requester
+            send_requester_notification(requester_email, "approved", "")
+            return redirect(url_for("home"))
+
+        elif decision == "reject":
+            cursor.execute("""
+                UPDATE bookings
+                SET status = 'rejected',
+                    rejection_reason = ?,
+                    approved_by = ?,
+                    approved_at = ?
+                WHERE id = ?
+            """, (
+                reason,
+                session["user"]["email"],
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                booking_id
+            ))
+
+            conn.commit()
+            conn.close()
+
+            # Notify requester
+            send_requester_notification(requester_email, "rejected", reason)
+            return redirect(url_for("home"))
+
+    conn.close()
+
+    # Render approval page
+    return render_template(
+        "approve.html",
+        booking_id=booking_id,
+        name=name,
+        purpose=purpose,
+        start_time=start_time,
+        end_time=end_time,
+        destination=destination,
+        token=token
+    )
+
+
+
+
+@app.route("/approve/confirm", methods=["POST"])
+def approve_confirm():
+    token = request.form["token"]
+    decision = request.form["decision"]
+    rejection_reason = request.form.get("rejection_reason", "")
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    # ⭐ Get requester email from the booking
+    cursor.execute("SELECT requester_email FROM bookings WHERE approval_token = ?", (token,))
+    row = cursor.fetchone()
+    requester_email = row[0] if row else None
+
+    # ⭐ Update booking status + rejection reason
+    # ⭐ Update booking status + rejection reason
+    if decision == "rejected":
+        cursor.execute("""
+            UPDATE bookings
+            SET status = ?, rejection_reason = ?
+            WHERE approval_token = ?
+        """, (decision, rejection_reason, token))
+
+    else:
+        cursor.execute("""
+            UPDATE bookings
+            SET status = ?, rejection_reason = NULL
+            WHERE approval_token = ?
+        """, (decision, token))
+
+        # ⭐ Update vehicle status to Booked Out
+        cursor.execute("""
+            UPDATE vehicles
+            SET status = 'Booked Out'
+            WHERE id = (
+                SELECT vehicle_id FROM bookings WHERE approval_token = ?
+            )
+        """, (token,))
+
+
+
+   
+
+    conn.commit()
+    conn.close()
+
+    # ⭐ Notify the requester
+    if requester_email:
+        send_requester_notification(
+            to_email=requester_email,
+            decision=decision,
+            reason=rejection_reason
+        )
+
+    return render_template(
+        "approval_result.html",
+        decision=decision,
+        rejection_reason=rejection_reason
+    )
 
 
 

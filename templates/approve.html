@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Vehicle Booking Approval</h2>
+
+    <div class="card p-3">
+        <p><strong>Name:</strong> {{ name }}</p>
+        <p><strong>Purpose:</strong> {{ purpose }}</p>
+        <p><strong>Start:</strong> {{ start_time }}</p>
+        <p><strong>End:</strong> {{ end_time }}</p>
+        <p><strong>Destination:</strong> {{ destination }}</p>
+    </div>
+
+    <form action="/approve/confirm" method="POST" class="mt-4">
+        <input type="hidden" name="token" value="{{ token }}">
+
+        <div class="mb-3">
+            <label for="rejection_reason" class="form-label">Rejection Reason (only if rejecting):</label>
+            <textarea name="rejection_reason" id="rejection_reason" class="form-control" rows="3"></textarea>
+        </div>
+
+        <button type="submit" name="decision" value="approved" class="btn btn-success me-2">
+            Approve
+        </button>
+
+        <button type="submit" name="decision" value="rejected" class="btn btn-danger">
+            Reject
+        </button>
+    </form>
+</div>
+{% endblock %}

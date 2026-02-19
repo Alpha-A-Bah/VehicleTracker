@@ -1,24 +1,26 @@
 import sqlite3
 
-# 1. Connect to your existing database
-connection = sqlite3.connect("database.db")
-cursor = connection.cursor()
+# Connect to the database (creates it if it doesn't exist)
+conn = sqlite3.connect("database.db")
+cursor = conn.cursor()
 
-# 2. Standardise status values
+# Create the bookings table
 cursor.execute("""
-    UPDATE vehicles
-    SET status = 'Available'
-    WHERE LOWER(status) = 'available';
+CREATE TABLE IF NOT EXISTS bookings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    purpose TEXT NOT NULL,
+    start_time TEXT NOT NULL,
+    end_time TEXT NOT NULL,
+    destination TEXT NOT NULL,
+    email TEXT NOT NULL,                 -- requester email
+    status TEXT NOT NULL DEFAULT 'pending',
+    rejection_reason TEXT,
+    approval_token TEXT UNIQUE
+);
 """)
 
-cursor.execute("""
-    UPDATE vehicles
-    SET status = 'Booked Out'
-    WHERE LOWER(status) = 'booked out';
-""")
+conn.commit()
+conn.close()
 
-# 3. Save changes and close
-connection.commit()
-connection.close()
-
-print("Status values normalised.")
+print("Database initialized successfully.")

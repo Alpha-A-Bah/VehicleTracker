@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Booking {{ decision|capitalize }}</h2>
+
+    {% if decision == "approved" %}
+        <div class="alert alert-success">
+            The booking has been approved.
+        </div>
+    {% else %}
+        <div class="alert alert-danger">
+            The booking has been rejected.
+        </div>
+
+        {% if rejection_reason %}
+            <div class="card p-3 mt-3">
+                <h5>Rejection Reason</h5>
+                <p>{{ rejection_reason }}</p>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

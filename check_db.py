@@ -1,12 +1,9 @@
 import sqlite3
 
-connection = sqlite3.connect("database.db")
-cursor = connection.cursor()
+conn = sqlite3.connect("database.db")
+cursor = conn.cursor()
 
-cursor.execute("SELECT * FROM vehicles;")
-rows = cursor.fetchall()
+cursor.execute("PRAGMA table_info(vehicles);")
+print(cursor.fetchall())
 
-for row in rows:
-    print(row)
-
-connection.close()
+conn.close()
