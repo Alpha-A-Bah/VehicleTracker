@@ -2,7 +2,11 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2 class="mb-4">Vehicle Logbook</h2>
+    <div class="text-center mb-4">
+    <h3 class="fw-semibold mb-1" style="color:#0d47a1;">Vehicle Logbook</h3>
+    <div class="mx-auto" style="width:120px; height:2px; background:#e5e5e5;"></div>
+</div>
+
     {% if request.args.get('vehicle_id') %}
     <a href="/vehicles" class="btn btn-secondary mb-3">Back to Vehicles</a>
     {% endif %}
