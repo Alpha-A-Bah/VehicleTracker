@@ -91,7 +91,13 @@ def send_email_smtp(to_email, subject, body):
     smtp_server = "smtp.office365.com"
     smtp_port = 587
 
-    username = session["user"]["email"]
+    user_claims = session.get("user", {})
+    username = (
+    user_claims.get("email")
+    or user_claims.get("preferred_username")
+    or user_claims.get("upn")
+)
+
     password = "zlwcqrdmskchhfrn"  # paste the 16‑digit app password
 
     msg = MIMEText(body)
@@ -207,6 +213,7 @@ def login_required(f):
 
 
 @app.route("/vehicles")
+@login_required
 @require_role("manager", "admin", "superuser")
 def vehicles():
     connection = sqlite3.connect("database.db")
@@ -336,26 +343,29 @@ def booking_page():
 from flask import session
 
 @app.route("/checkout_vehicle/<int:vehicle_id>", methods=["POST"])
+@login_required
+@require_role("manager", "admin", "superuser")
 def checkout_vehicle(vehicle_id):
-    # 🔒 Optional: enforce login
-    if "user" not in session:
-        flash("You must be logged in to book a vehicle.", "danger")
-        return redirect("/login")
-
     name = request.form["name"]
     purpose = request.form["purpose"]
     start_time = request.form["start_time"]
     end_time = request.form["end_time"]
     destination = request.form.get("destination", "")
 
-    # ⭐ Get requester email from Azure login
-    user_claims = session["user"]
+    # ⭐ SAFELY load Azure user claims
+    user_claims = session.get("user")
+    if not user_claims:
+        flash("Your session expired. Please log in again.", "danger")
+        return redirect("/login")
+
+    # ⭐ Extract requester email from Azure claims
     requester_email = (
         user_claims.get("email")
         or user_claims.get("preferred_username")
         or user_claims.get("upn")
     )
 
+    # ⭐ Format timestamps
     start_time = datetime.fromisoformat(start_time).strftime("%Y-%m-%d %H:%M:%S")
     end_time = datetime.fromisoformat(end_time).strftime("%Y-%m-%d %H:%M:%S")
     time_out = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -365,26 +375,26 @@ def checkout_vehicle(vehicle_id):
     connection = sqlite3.connect("database.db", timeout=5)
     cursor = connection.cursor()
 
-    # Get vehicle owner email
+    # ⭐ Get vehicle owner's email
     cursor.execute("SELECT owner_email FROM vehicles WHERE id = ?", (vehicle_id,))
     row = cursor.fetchone()
     owner_email = row[0] if row else None
 
-    # Insert booking with requester_email
+    # ⭐ Insert booking
     cursor.execute("""
         INSERT INTO bookings (
-        vehicle_id,
-        name,
-        purpose,
-        start_time,
-        end_time,
-        destination,
-        owner,
-        time_out,
-        status,
-        approval_token,
-        requester_email
-    )
+            vehicle_id,
+            name,
+            purpose,
+            start_time,
+            end_time,
+            destination,
+            owner,
+            time_out,
+            status,
+            approval_token,
+            requester_email
+        )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         vehicle_id,
@@ -400,10 +410,9 @@ def checkout_vehicle(vehicle_id):
         requester_email
     ))
 
-
     booking_id = cursor.lastrowid
 
-    # Send approval email to vehicle owner
+    # ⭐ Send approval email
     send_approval_email(
         to_email=owner_email,
         booking_id=booking_id,
@@ -415,6 +424,8 @@ def checkout_vehicle(vehicle_id):
 
     flash("Vehicle checked out successfully! Awaiting approval.", "success")
     return redirect("/")
+
+
 
 
 
@@ -455,7 +466,7 @@ def checkin_vehicle(booking_id):
     return redirect("/")
 
 @app.route("/bookings")
-@login_required
+@require_role("admin", "superuser")
 def bookings():
     connection = sqlite3.connect("database.db", timeout=10)
     cursor = connection.cursor()
@@ -527,7 +538,7 @@ def log_journey(booking_id):
 
 
 @app.route("/logbook")
-@login_required
+@require_role("admin", "superuser")
 def logbook_page():
     vehicle_id = request.args.get("vehicle_id")
     print("DEBUG vehicle_id =", vehicle_id)
@@ -605,34 +616,30 @@ def authorized():
 
     code = request.args.get("code")
 
-    # ⭐ Split scopes so MSAL gets both User.Read and Mail.Send
     result = msal_app.acquire_token_by_authorization_code(
-    code,
-    scopes=SCOPE if isinstance(SCOPE, list) else SCOPE.split(),
-    redirect_uri=request.host_url.rstrip("/") + REDIRECT_PATH
-)
-
-
-    print("MSAL RESULT:", result)
-    print("RESULT KEYS:", result.keys())
-    print("ACCESS TOKEN:", result.get("access_token"))
+        code,
+        scopes=SCOPE if isinstance(SCOPE, list) else SCOPE.split(),
+        redirect_uri=request.host_url.rstrip("/") + REDIRECT_PATH
+    )
 
     if "error" in result:
-        print("LOGIN ERROR:", result.get("error_description"))
         return "Login failed: " + result.get("error_description", "Unknown error"), 401
 
     user_info = result.get("id_token_claims", {})
 
-    email = user_info.get("preferred_username")  # Azure's email field
-    name = user_info.get("name")                 # Azure's display name
+    email = user_info.get("preferred_username")
+    name = user_info.get("name")
+
+    # ⭐ FIX: store Azure user claims in session
+    session["user"] = user_info
 
     ensure_user_exists(email, name)
     load_user_role_into_session(email, name)
 
-        # ⭐ Store access token for sending email later
     session["access_token"] = result["access_token"]
 
     return redirect("/")
+
 
     
 def require_role(*roles):
@@ -851,6 +858,72 @@ def update_role():
 
     flash("User role updated successfully!", "success")
     return redirect("/admin/users")
+
+@app.route("/calendar")
+@login_required
+def calendar_view():
+    return render_template("calendar.html")
+
+
+@app.route("/api/bookings")
+@login_required
+def api_bookings():
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT 
+            b.id,
+            b.name,
+            v.reg,
+            b.start_time,
+            b.end_time,
+            b.status
+        FROM bookings b
+        JOIN vehicles v ON b.vehicle_id = v.id
+    """)
+    rows = cursor.fetchall()
+    connection.close()
+
+    events = []
+    for row in rows:
+        booking_id = row[0]
+        user_name = row[1]
+        vehicle_reg = row[2]
+        start = row[3]
+        end = row[4]
+        status = row[5]
+
+        # Fix datetime format (space → T)
+        if " " in start:
+            start = start.replace(" ", "T")
+        if " " in end:
+            end = end.replace(" ", "T")
+
+        # Colour coding
+        color = "#0d6efd"  # blue
+        if status == "active":
+            color = "#dc3545"  # red
+        elif status == "approved":
+            color = "#ffc107"  # yellow
+        elif status == "completed":
+            color = "#198754"  # green
+
+        events.append({
+            "id": booking_id,
+            "title": f"{vehicle_reg} — {user_name}",
+            "start": start,
+            "end": end,
+            "color": color,
+            "extendedProps":{
+                "booking_id": booking_id}
+                            })
+
+    return jsonify(events)
+
+
+
+
 
 
 if __name__ == "__main__":
