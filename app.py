@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, flash, session, url_for
+from flask import Flask, render_template, request, redirect, flash, session, url_for, jsonify
 from functools import wraps
 from dotenv import load_dotenv
 import os
@@ -8,6 +8,7 @@ from datetime import datetime
 import secrets
 import sqlite3
 from datetime import datetime
+
 
 load_dotenv()
 
@@ -24,6 +25,67 @@ from flask import session
 
 import smtplib
 from email.mime.text import MIMEText
+
+import sqlite3
+
+def get_db_connection():
+    return sqlite3.connect("database.db")
+
+
+def ensure_user_exists(email, name):
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    # Check if user already exists
+    cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+    row = cursor.fetchone()
+
+    if not row:
+        # Insert new user with default role 'user'
+        cursor.execute(
+            "INSERT INTO users (email, name, role) VALUES (?, ?, ?)",
+            (email, name, "user")
+        )
+        connection.commit()
+
+    connection.close()
+
+from flask import session
+
+def load_user_role_into_session(email, name):
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT role, name FROM users WHERE email = ?", (email,))
+    row = cursor.fetchone()
+
+    if row:
+        role, stored_name = row
+        session["role"] = role
+        session["email"] = email
+        session["name"] = stored_name or name
+    else:
+        # fallback if something unexpected happens
+        session["role"] = "user"
+        session["email"] = email
+        session["name"] = name
+
+    connection.close()
+
+def require_role(*roles):
+    def wrapper(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            user_role = session.get("role")
+
+            # If user has no role or role not allowed → block
+            if user_role not in roles:
+                return render_template("unauthorized.html"), 403
+
+
+            return f(*args, **kwargs)
+        return decorated
+    return wrapper
 
 def send_email_smtp(to_email, subject, body):
     smtp_server = "smtp.office365.com"
@@ -136,15 +198,16 @@ app.secret_key = "supersecretkey"
 
 def login_required(f):
     @wraps(f)
-    def wrapper(*args, **kwargs):
-        if "user" not in session:
+    def decorated(*args, **kwargs):
+        # ⭐ New login check
+        if "email" not in session:
             return redirect("/login")
         return f(*args, **kwargs)
-    return wrapper
+    return decorated
 
 
 @app.route("/vehicles")
-@login_required
+@require_role("manager", "admin", "superuser")
 def vehicles():
     connection = sqlite3.connect("database.db")
     cursor = connection.cursor()
@@ -554,20 +617,34 @@ def authorized():
     print("RESULT KEYS:", result.keys())
     print("ACCESS TOKEN:", result.get("access_token"))
 
+    if "error" in result:
+        print("LOGIN ERROR:", result.get("error_description"))
+        return "Login failed: " + result.get("error_description", "Unknown error"), 401
 
-    if "id_token_claims" in result:
-        session["user"] = {
-            "name": result["id_token_claims"]["name"],
-            "email": result["id_token_claims"]["preferred_username"]
-        }
+    user_info = result.get("id_token_claims", {})
+
+    email = user_info.get("preferred_username")  # Azure's email field
+    name = user_info.get("name")                 # Azure's display name
+
+    ensure_user_exists(email, name)
+    load_user_role_into_session(email, name)
 
         # ⭐ Store access token for sending email later
-        session["access_token"] = result["access_token"]
+    session["access_token"] = result["access_token"]
 
-        return redirect("/")
+    return redirect("/")
 
-    return "Login failed", 401
-
+    
+def require_role(*roles):
+    from functools import wraps
+    def wrapper(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            if session.get("role") not in roles:
+                return "Unauthorized", 403
+            return f(*args, **kwargs)
+        return decorated
+    return wrapper
 
 
 
@@ -731,6 +808,49 @@ def approve_confirm():
     )
 
 
+@app.route('/booking/<int:booking_id>/notes')
+def get_booking_notes(booking_id):
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT notes FROM bookings WHERE id = ?", (booking_id,))
+    row = cursor.fetchone()
+
+    connection.close()
+
+    if row:
+        return jsonify({"notes": row[0] or ""})
+    else:
+        return jsonify({"notes": ""}), 404
+
+
+@app.route("/admin/users")
+
+def manage_users():
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT id, email, name, role FROM users")
+    users = cursor.fetchall()
+
+    connection.close()
+    return render_template("manage_users.html", users=users)
+
+@app.route("/admin/update_role", methods=["POST"])
+
+def update_role():
+    user_id = request.form["user_id"]
+    new_role = request.form["role"]
+
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    cursor.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
+    connection.commit()
+    connection.close()
+
+    flash("User role updated successfully!", "success")
+    return redirect("/admin/users")
 
 
 if __name__ == "__main__":

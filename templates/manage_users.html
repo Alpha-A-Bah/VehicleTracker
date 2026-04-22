@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-4">User Role Management</h2>
+<p class="text-muted">Change user roles below.</p>
+
+<div class="table-responsive">
+    <table class="table table-bordered table-striped mt-3">
+        <thead class="table-light">
+            <tr>
+                <th>ID</th>
+                <th>Email</th>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Change</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user[0] }}</td>
+                <td>{{ user[1] }}</td>
+                <td>{{ user[2] }}</td>
+                <td>{{ user[3] }}</td>
+                <td>
+                    <form action="/admin/update_role" method="POST" class="d-flex">
+                        <input type="hidden" name="user_id" value="{{ user[0] }}">
+                        <select name="role" class="form-select me-2">
+                            <option value="user" {% if user[3] == "user" %}selected{% endif %}>User</option>
+                            <option value="manager" {% if user[3] == "manager" %}selected{% endif %}>Manager</option>
+                            <option value="admin" {% if user[3] == "admin" %}selected{% endif %}>Admin</option>
+                            <option value="superuser" {% if user[3] == "superuser" %}selected{% endif %}>Superuser</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm">Update</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<a href="/" class="btn btn-secondary mt-3">Back to Home</a>
+
+{% endblock %}

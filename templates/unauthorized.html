@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Access Denied{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-center mt-5">
+    <div class="card shadow-sm p-4" style="max-width: 500px; width: 100%;">
+        <h3 class="text-danger text-center">Access Denied</h3>
+        <p class="mt-3 text-center">
+            You don’t have the required permissions to view this page.
+        </p>
+        <div class="text-center mt-3">
+            <a href="/" class="btn btn-primary">Return to Home</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

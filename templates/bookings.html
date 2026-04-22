@@ -22,6 +22,7 @@
             <th>Checked In</th>
             <th>Return Mileage</th>
             <th>Status</th>
+            <th>Notes</th>
         </tr>
     </thead>
 
@@ -38,9 +39,51 @@
             <td>{{ b[7] }}</td>
             <td>{{ b[8] }}</td>
             <td>{{ b[9] }}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary rounded-pill px-3"
+                onclick="openNotesModal('{{ b[0] }}')">
+                Notes
+                </button>
+
+
+            </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+
+<!-- Notes Modal -->
+<div class="modal fade" id="notesModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Booking Notes</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p id="notesContent">Loading...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openNotesModal(bookingId) {
+    fetch(`/booking/${bookingId}/notes`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById("notesContent").innerText = data.notes || "No notes.";
+            let modal = new bootstrap.Modal(document.getElementById('notesModal'));
+            modal.show();
+        })
+        .catch(err => {
+            document.getElementById("notesContent").innerText = "Error loading notes.";
+            let modal = new bootstrap.Modal(document.getElementById('notesModal'));
+            modal.show();
+        });
+}
+</script>
+
+
 
 {% endblock %}

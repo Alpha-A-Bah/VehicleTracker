@@ -132,13 +132,19 @@
                     <a class="nav-link" href="/logbook">Logbook</a>
                 </li>
 
+                {% if session.get('role') in ['admin', 'superuser'] %}
+                <li class="nav-item">
+                    <a class="nav-link" href="/admin/users">Manage Users</a>
+                </li>
+                {% endif %}
+
             </ul>
 
             <!-- RIGHT: User info + Logout -->
-            {% if session.user %}
+            {% if session.email %}
             <div class="d-flex align-items-center">
                 <span class="text-secondary small me-3">
-                    {{ session.user.name }}
+                    {{ session.name }}
                 </span>
                 <a href="/logout" class="btn btn-outline-primary btn-sm">Logout</a>
             </div>
