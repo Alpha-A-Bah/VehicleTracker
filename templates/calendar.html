@@ -5,6 +5,28 @@
 {% block content %}
 <h2 class="mb-4">Vehicle Booking Calendar</h2>
 <div id="calendar"></div>
+
+<!-- ⭐ The modal MUST be inside content, NOT inside a script tag -->
+<div class="modal fade" id="bookingModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Booking Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body" id="bookingModalBody">
+        Loading...
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -13,6 +35,15 @@
 <script>
 function openBookingModal(id) {
     console.log("OPEN MODAL FOR:", id);
+
+    fetch(`/booking/${id}`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById("bookingModalBody").innerHTML = html;
+
+            var modal = new bootstrap.Modal(document.getElementById("bookingModal"));
+            modal.show();
+        });
 }
 </script>
 

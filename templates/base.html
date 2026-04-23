@@ -150,11 +150,18 @@
                     <a class="nav-link" href="/logbook">Logbook</a>
                 </li>
 
+                <li class="nav-item">
+                    <a class="nav-link" href="/jobcards">Jobcards</a>
+                </li>
+
+
+                
                 {% if session.get('role') in ['admin', 'superuser'] %}
                 <li class="nav-item">
                     <a class="nav-link" href="/admin/users">Manage Users</a>
                 </li>
                 {% endif %}
+
 
             </ul>
 

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Jobcards{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Jobcards</h2>
+
+<a href="/jobcards/create" class="btn btn-primary mb-3">Create New Jobcard</a>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Vehicle</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Created By</th>
+            <th>Created At</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for jc in jobcards %}
+        <tr>
+            <td>{{ jc[0] }}</td>
+            <td>{{ jc[6] }}</td>
+            <td>{{ jc[2] }}</td>
+            <td>{{ jc[3] }}</td>
+            <td>{{ jc[5] }}</td>
+            <td>{{ jc[4] }}</td>
+
+            <td>
+                {% if role in ["admin", "superuser"] %}
+                    {% if jc[3] == "pending_supervisor" %}
+                        <a href="/jobcards/{{ jc[0] }}/approve" class="btn btn-success btn-sm">Approve</a>
+                        <a href="/jobcards/{{ jc[0] }}/decline" class="btn btn-danger btn-sm">Decline</a>
+                    {% endif %}
+
+                    {% if jc[3] == "approved" %}
+                        <form action="/jobcards/{{ jc[0] }}/assign" method="post" class="d-inline">
+                            <select name="technician_id" class="form-select form-select-sm d-inline w-auto">
+                                {% for user in technicians %}
+                                    <option value="{{ user[0] }}">{{ user[1] }}</option>
+                                {% endfor %}
+                            </select>
+                            <button class="btn btn-warning btn-sm">Assign</button>
+                        </form>
+                    {% endif %}
+
+                    {% if jc[3] == "completed" %}
+                        <a href="/jobcards/{{ jc[0] }}/close" class="btn btn-secondary btn-sm">Close</a>
+                    {% endif %}
+                {% endif %}
+
+                {% if role == "technician" and jc[3] == "assigned" %}
+                    <a href="/jobcards/{{ jc[0] }}/complete" class="btn btn-success btn-sm">Mark Completed</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

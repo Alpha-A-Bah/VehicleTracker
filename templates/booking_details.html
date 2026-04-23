@@ -1,0 +1,15 @@
+<p><strong>Vehicle:</strong> {{ booking[2] }}</p>
+<p><strong>User:</strong> {{ booking[1] }}</p>
+<p><strong>Start:</strong> {{ booking[3] }}</p>
+<p><strong>End:</strong> {{ booking[4] }}</p>
+<p><strong>Status:</strong> {{ booking[5] }}</p>
+
+<hr>
+
+<h6>Purpose / Required Testing</h6>
+<p>{{ booking[7] if booking[7] else "No purpose provided." }}</p>
+
+<hr>
+
+<h6>Notes</h6>
+<p>{{ booking[6] if booking[6] else "No notes available." }}</p>

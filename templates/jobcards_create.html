@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Raise Jobcard{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Raise Jobcard</h2>
+
+<form method="post" class="card p-3">
+    <div class="mb-3">
+        <label class="form-label">Vehicle</label>
+        <select name="vehicle_id" class="form-select" required>
+            <option value="" disabled selected>Select vehicle</option>
+            {% for v in vehicles %}
+                <option value="{{ v[0] }}">{{ v[1] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-control" rows="4" required></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit Jobcard</button>
+</form>
+{% endblock %}

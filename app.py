@@ -630,15 +630,31 @@ def authorized():
     email = user_info.get("preferred_username")
     name = user_info.get("name")
 
-    # ⭐ FIX: store Azure user claims in session
+    # Store Azure claims
     session["user"] = user_info
 
+    # Ensure user exists in DB
     ensure_user_exists(email, name)
+
+    # Load role into session
     load_user_role_into_session(email, name)
 
+    # ⭐ NEW: Load user_id into session
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+    user_row = cursor.execute(
+        "SELECT id FROM users WHERE email = ?", (email,)
+    ).fetchone()
+    connection.close()
+
+    if user_row:
+        session["user_id"] = user_row[0]
+
+    # Store access token
     session["access_token"] = result["access_token"]
 
     return redirect("/")
+
 
 
     
@@ -921,6 +937,120 @@ def api_bookings():
 
     return jsonify(events)
 
+@app.route("/jobcards/create", methods=["GET", "POST"])
+def create_jobcard():
+    # Prevent login loop — check for email, not user_id
+    if "email" not in session:
+        return redirect("/login")
+
+    user_id = session.get("user_id")
+
+    if request.method == "POST":
+        vehicle_id = request.form["vehicle_id"]
+        description = request.form["description"]
+
+        connection = sqlite3.connect("database.db")
+        cursor = connection.cursor()
+        cursor.execute("""
+            INSERT INTO jobcards (vehicle_id, created_by, description)
+            VALUES (?, ?, ?)
+        """, (vehicle_id, user_id, description))
+        connection.commit()
+        connection.close()
+
+        flash("Jobcard created.", "success")
+        return redirect("/jobcards")   # redirect to dashboard, not create page
+
+    # GET: load vehicles for dropdown
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+    vehicles = cursor.execute(
+        "SELECT id, reg FROM vehicles ORDER BY reg"
+    ).fetchall()
+    connection.close()
+
+    return render_template("jobcards_create.html", vehicles=vehicles)
+
+
+@app.route("/jobcards")
+def jobcards_home():
+    if "email" not in session:
+        return redirect("/login")
+
+    role = session.get("role")
+    user_id = session.get("user_id")  # optional
+
+    ...
+
+
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    # Supervisor sees ALL jobcards
+    if role in ["admin", "superuser"]:
+        jobcards = cursor.execute("""
+            SELECT j.id, j.vehicle_id, j.description, j.status, j.created_at,
+                   u.name AS created_by_name,
+                   v.reg AS vehicle_reg
+            FROM jobcards j
+            JOIN users u ON j.created_by = u.id
+            JOIN vehicles v ON j.vehicle_id = v.id
+            ORDER BY j.created_at DESC
+        """).fetchall()
+
+    # Technician sees only assigned jobs
+    elif role == "technician":
+        jobcards = cursor.execute("""
+            SELECT j.id, j.vehicle_id, j.description, j.status, j.created_at,
+                   u.name AS created_by_name,
+                   v.reg AS vehicle_reg
+            FROM jobcards j
+            JOIN users u ON j.created_by = u.id
+            JOIN vehicles v ON j.vehicle_id = v.id
+            WHERE j.assigned_to = ?
+            ORDER BY j.created_at DESC
+        """, (user_id,)).fetchall()
+
+    # Normal user sees only their own jobcards
+    else:
+        jobcards = cursor.execute("""
+            SELECT j.id, j.vehicle_id, j.description, j.status, j.created_at,
+                   u.name AS created_by_name,
+                   v.reg AS vehicle_reg
+            FROM jobcards j
+            JOIN users u ON j.created_by = u.id
+            JOIN vehicles v ON j.vehicle_id = v.id
+            WHERE j.created_by = ?
+            ORDER BY j.created_at DESC
+        """, (user_id,)).fetchall()
+
+    connection.close()
+
+    return render_template("jobcards_home.html", jobcards=jobcards, role=role)
+
+@app.route("/booking/<int:id>")
+def booking_details(id):
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    row = cursor.execute("""
+        SELECT 
+            b.id,
+            b.name,
+            v.reg,
+            b.start_time,
+            b.end_time,
+            b.status,
+            b.notes,
+            b.purpose
+        FROM bookings b
+        JOIN vehicles v ON b.vehicle_id = v.id
+        WHERE b.id = ?
+    """, (id,)).fetchone()
+
+    connection.close()
+
+    return render_template("booking_details.html", booking=row)
 
 
 
