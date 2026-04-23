@@ -4,40 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Vehicle Tracker{% endblock %}</title>
-    <link rel="preload" href="{{ url_for('static', filename='logo.png') }}" as="image">
+
+    <!-- Icons + Fonts -->
     <link rel="icon" href="{{ url_for('static', filename='logo.png') }}">
+    <link rel="preload" href="{{ url_for('static', filename='logo.png') }}" as="image">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
-    <style>
-    .fc-event,
-    .fc-daygrid-event,
-    .fc-h-event {
-        cursor: pointer !important;
-        pointer-events: auto !important;
-    }
-
-    .fc-event * {
-        pointer-events: auto !important;
-    }
-    </style>
-
-
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FullCalendar CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
 
+    <!-- CLEAN ENTERPRISE MINIMAL NAVBAR -->
     <style>
-        body, h1, h2, h3, h4, h5, h6 {
+        body {
             font-family: 'Inter', sans-serif !important;
-        }
-    </style>
-
-    <style>
-        .navbar {
-
-            min-height: 60px;
         }
 
         .logo {
@@ -46,145 +29,118 @@
             image-rendering: crisp-edges;
         }
 
-        
+        /* NAVBAR — Enterprise Minimal */
+        .navbar {
+            padding-top: 6px !important;
+            padding-bottom: 6px !important;
+            min-height: 56px;
+            background: #ffffff;
+        }
 
-        /* Smooth hover animation for navbar links */
-.navbar-nav .nav-link {
-    position: relative;
-    padding-bottom: 4px;
-    transition: color 0.2s ease-in-out;
-    
-}
+        .navbar-nav .nav-link {
+            padding: 6px 10px !important;
+            font-weight: 500;
+            color: #333;
+            transition: color 0.2s ease-in-out;
+        }
 
-/* Underline animation */
-.navbar-nav .nav-link::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    bottom: 0;
-    width: 0%;
-    height: 2px;
-    background-color: #0d6efd; /* Bootstrap primary blue */
-    transition: width 0.25s ease-in-out;
-}
+        .navbar-nav .nav-link:hover {
+            color: #0d6efd;
+        }
 
+        .navbar-nav .nav-link.dropdown-toggle i {
+            margin-right: 6px;
+        }
 
+        .navbar-nav .nav-item.dropdown {
+            margin-right: 1.25rem;
+        }
 
-/* Hover effect */
-.navbar-nav .nav-link:hover {
-    color: #0d6efd;
-}
-
-.navbar-nav .nav-link:hover::after {
-    width: 100%;
-}
-
-/* Active page highlight (optional) */
-.navbar-nav .nav-link.active {
-    color: #0d6efd;
-    font-weight: 600;
-}
-
-.navbar-nav .nav-link.active::after {
-    width: 100%;
-}
-
+        /* Fix FullCalendar pointer issues */
+        .fc-event,
+        .fc-daygrid-event,
+        .fc-h-event {
+            cursor: pointer !important;
+            pointer-events: auto !important;
+        }
+        .fc-event * {
+            pointer-events: auto !important;
+        }
     </style>
-
-    <style>
-    /* Reduce vertical padding on the navbar */
-    .navbar {
-        padding-top: 4px !important;
-        padding-bottom: 4px !important;
-        min-height: 50px; /* optional, keeps logo aligned */
-    }
-
-    /* Reduce vertical padding on nav links */
-    .navbar-nav .nav-link {
-        padding-top: 4px !important;
-        padding-bottom: 4px !important;
-    }
-</style>
-
 </head>
-
 
 <body class="bg-light">
 
     <!-- NAVBAR -->
-    <nav class="navbar navbar-expand-lg bg-white border-bottom shadow-sm">
-    <div class="container-fluid">
+    <nav class="navbar navbar-expand-lg border-bottom shadow-sm">
+        <div class="container-fluid">
 
-        <!-- LEFT: Logo + Brand -->
-        <a class="navbar-brand d-flex align-items-center" href="/">
-            <img src="{{ url_for('static', filename='logo.png') }}" class="logo me-2">
-            
-        </a>
+            <!-- Logo -->
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <img src="{{ url_for('static', filename='logo.png') }}" class="logo me-2">
+            </a>
 
-        <!-- Mobile toggle -->
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+            <!-- Mobile toggle -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
 
-        <!-- CENTER: Navigation links -->
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto">
+            <!-- NAV CONTENT -->
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
 
-                <li class="nav-item">
-                    <a class="nav-link" href="/">Vehicle Booking</a>
-                </li>
+                    <!-- VEHICLES -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" data-bs-toggle="dropdown">
+                            <i class="bi bi-car-front"></i> Vehicles
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/">Vehicle Booking</a></li>
+                            <li><a class="dropdown-item" href="/bookings">Booking History</a></li>
+                            <li><a class="dropdown-item" href="/vehicles">Vehicles</a></li>
+                            <li><a class="dropdown-item" href="/calendar">Vehicle Calendar</a></li>
+                            <li><a class="dropdown-item" href="/logbook">Logbook</a></li>
+                        </ul>
+                    </li>
 
-                <li class="nav-item">
-                    <a class="nav-link" href="/vehicles">Vehicles</a>
-                </li>
+                    <!-- WORKSHOP -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" data-bs-toggle="dropdown">
+                            <i class="bi bi-tools"></i> Workshop
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/jobcards">Jobcards</a></li>
+                        </ul>
+                    </li>
 
-                <li class="nav-item">
-                    <a class="nav-link" href="/bookings">Booking History</a>
-                </li>
+                    <!-- ADMIN -->
+                    {% if session.get('role') in ['admin', 'superuser'] %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" data-bs-toggle="dropdown">
+                            <i class="bi bi-shield-lock"></i> Admin
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/admin/users">Manage Users</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
 
-                <li class="nav-item">
-                    <a class="nav-link" href="/calendar">Vehicle Calendar</a>
-                </li>
-
-                <li class="nav-item">
-                    <a class="nav-link" href="/logbook">Logbook</a>
-                </li>
-
-                <li class="nav-item">
-                    <a class="nav-link" href="/jobcards">Jobcards</a>
-                </li>
-
-
-                
-                {% if session.get('role') in ['admin', 'superuser'] %}
-                <li class="nav-item">
-                    <a class="nav-link" href="/admin/users">Manage Users</a>
-                </li>
+                <!-- USER INFO -->
+                {% if session.email %}
+                <div class="d-flex align-items-center">
+                    <span class="text-secondary small me-3 d-flex align-items-center">
+                        {{ session.get('name') }}
+                        {% if session.get('role') in ['admin', 'superuser'] %}
+                            <span class="ms-1" style="font-size: 1.1rem;">👑</span>
+                        {% endif %}
+                    </span>
+                    <a href="/logout" class="btn btn-outline-primary btn-sm">Logout</a>
+                </div>
                 {% endif %}
-
-
-            </ul>
-
-            <!-- RIGHT: User info + Logout -->
-            {% if session.email %}
-            <div class="d-flex align-items-center">
-                <span class="text-secondary small me-3">
-                    {{ session.get('name') }}
-
-                {% if session.get('role') in ['admin', 'superuser'] %}
-                    <span class="ms-1" style="font-size: 1.1rem;">👑</span>
-                {% endif %}
-
-                </span>
-                <a href="/logout" class="btn btn-outline-primary btn-sm">Logout</a>
             </div>
-            {% endif %}
         </div>
-
-    </div>
-</nav>
-
-
+    </nav>
 
     <!-- FLASH MESSAGES -->
     <div class="container mt-3">
@@ -205,15 +161,9 @@
         {% block content %}{% endblock %}
     </div>
 
-    <!-- Bootstrap JS -->
+    <!-- Bootstrap JS (single, correct, conflict‑free) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-{% block scripts %}{% endblock %}
-
-
-
+    {% block scripts %}{% endblock %}
 </body>
 </html>
