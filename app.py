@@ -327,11 +327,13 @@ from flask import session
 
 
 
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
 
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
 
 
 def login_required(f):
@@ -722,12 +724,14 @@ def logbook_page():
 @app.route("/login")
 def login():
     session.clear()
+
     msal_app = msal.ConfidentialClientApplication(
         CLIENT_ID,
         authority=AUTHORITY,
         client_credential=CLIENT_SECRET
     )
 
+    # ⭐ Always use the production redirect URI from Railway
     redirect_uri = os.getenv("REDIRECT_URI")
 
     auth_url = msal_app.get_authorization_request_url(
@@ -741,6 +745,7 @@ def login():
 
 
 
+
 @app.route(REDIRECT_PATH)
 def authorized():
     msal_app = msal.ConfidentialClientApplication(
@@ -750,7 +755,7 @@ def authorized():
     )
 
     code = request.args.get("code")
-    redirect_uri = os.getenv("REDIRECT_URI")
+    redirect_uri = os.getenv("REDIRECT_URI")   # ⭐ Always use production redirect
 
     result = msal_app.acquire_token_by_authorization_code(
         code,
@@ -758,26 +763,25 @@ def authorized():
         redirect_uri=redirect_uri
     )
 
-
-
+    # ⭐ Handle login failure
     if "error" in result:
         return "Login failed: " + result.get("error_description", "Unknown error"), 401
 
+    # ⭐ Extract Azure user info
     user_info = result.get("id_token_claims", {})
-
     email = user_info.get("preferred_username")
     name = user_info.get("name")
 
-    # Store Azure claims
+    # ⭐ Store Azure claims in session
     session["user"] = user_info
 
-    # Ensure user exists in DB
+    # ⭐ Ensure user exists in DB
     ensure_user_exists(email, name)
 
-    # Load role into session
+    # ⭐ Load role into session
     load_user_role_into_session(email, name)
 
-    # ⭐ NEW: Load user_id into session
+    # ⭐ Load user_id into session
     connection = sqlite3.connect("database.db")
     cursor = connection.cursor()
     user_row = cursor.execute(
@@ -788,10 +792,11 @@ def authorized():
     if user_row:
         session["user_id"] = user_row[0]
 
-    # Store access token
+    # ⭐ Store access token for sending emails
     session["access_token"] = result["access_token"]
 
     return redirect("/")
+
 
 
 
