@@ -121,67 +121,54 @@ def build_html_email(title, content):
     """
 
 
+import os
+import requests
+from email.mime.text import MIMEText
+
 def send_email_smtp(to_email, subject, body):
-    smtp_server = os.getenv("SMTP_SERVER")
-    smtp_port = int(os.getenv("SMTP_PORT"))
-    username = os.getenv("SMTP_EMAIL")
-    password = os.getenv("SMTP_PASSWORD")
+    sendgrid_key = os.getenv("SENDGRID_API_KEY")
+    sender = os.getenv("SMTP_EMAIL")
 
-    msg = MIMEText(body, "html")
-    msg["Subject"] = subject
-    msg["From"] = username
-    msg["To"] = to_email
-
-    try:
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        server.login(username, password)
-        server.sendmail(username, [to_email], msg.as_string())
-        server.quit()
-        print(f"SMTP email sent successfully to {to_email}")
-        return True
-
-    except Exception as e:
-        print(f"SMTP ERROR sending to {to_email}: {e}")
+    if not sendgrid_key:
+        print("ERROR: SENDGRID_API_KEY missing")
         return False
 
+    url = "https://api.sendgrid.com/v3/mail/send"
 
-def send_email_via_graph(to_email, subject, body):
-    access_token = session.get("access_token")
-
-    # Step 1: Create the draft message
-    create_url = "https://graph.microsoft.com/v1.0/me/messages"
-
-    message = {
-        "subject": subject,
-        "body": {
-            "contentType": "Text",
-            "content": body
-        },
-        "toRecipients": [
-            {"emailAddress": {"address": to_email}}
+    payload = {
+        "personalizations": [
+            {
+                "to": [{"email": to_email}],
+                "subject": subject
+            }
+        ],
+        "from": {"email": sender},
+        "content": [
+            {
+                "type": "text/html",
+                "value": body
+            }
         ]
     }
 
     headers = {
-        "Authorization": f"Bearer {access_token}",
+        "Authorization": f"Bearer {sendgrid_key}",
         "Content-Type": "application/json"
     }
 
-    create_response = requests.post(create_url, headers=headers, json=message)
-    print("GRAPH CREATE RESPONSE:", create_response.status_code, create_response.text)
-
-    if create_response.status_code not in (200, 201):
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        print("SendGrid response:", response.status_code, response.text)
+        return response.status_code in (200, 202)
+    except Exception as e:
+        print("SendGrid exception:", e)
         return False
 
-    message_id = create_response.json().get("id")
 
-    # Step 2: Send the draft
-    send_url = f"https://graph.microsoft.com/v1.0/me/messages/{message_id}/send"
-    send_response = requests.post(send_url, headers=headers)
-    print("GRAPH SEND RESPONSE:", send_response.status_code, send_response.text)
 
-    return send_response.status_code in (202, 204)
+
+
+
 
 def send_approval_email(to_email, booking_id, token):
     subject = "Vehicle Booking Approval Required"
@@ -199,7 +186,11 @@ def send_approval_email(to_email, booking_id, token):
     """
 
     body = build_html_email(subject, content)
-    send_email_smtp(to_email, subject, body)
+
+    try:
+        send_email_smtp(to_email, subject, body)
+    except Exception as e:
+        print("EMAIL ERROR in send_approval_email:", e)
 
 
 
