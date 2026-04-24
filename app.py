@@ -724,13 +724,16 @@ def login():
         client_credential=CLIENT_SECRET
     )
 
+    redirect_uri = os.getenv("REDIRECT_URI")
+
     auth_url = msal_app.get_authorization_request_url(
         scopes=SCOPE if isinstance(SCOPE, list) else SCOPE.split(),
-        redirect_uri=request.host_url.rstrip("/") + REDIRECT_PATH,
-        prompt="select_account"   # ⭐ Force fresh login
+        redirect_uri=redirect_uri,
+        prompt="select_account"
     )
 
     return redirect(auth_url)
+
 
 
 
@@ -743,12 +746,15 @@ def authorized():
     )
 
     code = request.args.get("code")
+    redirect_uri = os.getenv("REDIRECT_URI")
 
     result = msal_app.acquire_token_by_authorization_code(
         code,
         scopes=SCOPE if isinstance(SCOPE, list) else SCOPE.split(),
-        redirect_uri=request.host_url.rstrip("/") + REDIRECT_PATH
+        redirect_uri=redirect_uri
     )
+
+
 
     if "error" in result:
         return "Login failed: " + result.get("error_description", "Unknown error"), 401
