@@ -67,18 +67,23 @@
 <script>
 function openNotesModal(bookingId) {
     fetch(`/booking/${bookingId}/notes`)
-        .then(response => response.text())   // FIXED: no JSON parsing
-        .then(text => {
-            document.getElementById("notesContent").innerText = text || "No notes.";
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById("notesContent").innerText = data.notes || "No notes.";
+
+            // SHOW MODAL ON SUCCESS
             let modal = new bootstrap.Modal(document.getElementById('notesModal'));
             modal.show();
         })
         .catch(err => {
             document.getElementById("notesContent").innerText = "Error loading notes.";
+
+            // SHOW MODAL EVEN ON ERROR
             let modal = new bootstrap.Modal(document.getElementById('notesModal'));
             modal.show();
         });
 }
 </script>
+
 
 {% endblock %}

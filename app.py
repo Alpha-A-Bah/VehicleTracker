@@ -87,20 +87,53 @@ def require_role(*roles):
         return decorated
     return wrapper
 
+# -------------------------------
+#  HTML Email Wrapper (ADD THIS)
+# -------------------------------
+def build_html_email(title, content):
+    return f"""
+    <html>
+    <body style="font-family: Inter, Arial, sans-serif; background:#f7f7f7; padding:20px;">
+
+        <div style="max-width:600px; margin:auto; background:white; padding:25px; 
+                    border-radius:10px; border:1px solid #e5e5e5;">
+
+            <h2 style="color:#0d47a1; margin-top:0; margin-bottom:15px;">
+                {title}
+            </h2>
+
+            <div style="font-size:15px; line-height:1.6; color:#333;">
+                {content}
+            </div>
+
+            <p style="margin-top:30px; font-size:12px; color:#777;">
+                This is an automated message from the Vehicle Tracker system.
+            </p>
+
+        </div>
+
+    </body>
+    </html>
+    """
+
+
 def send_email_smtp(to_email, subject, body):
     smtp_server = "smtp.office365.com"
     smtp_port = 587
 
+    # Extract logged‑in user's email from Azure claims
     user_claims = session.get("user", {})
     username = (
-    user_claims.get("email")
-    or user_claims.get("preferred_username")
-    or user_claims.get("upn")
-)
+        user_claims.get("email")
+        or user_claims.get("preferred_username")
+        or user_claims.get("upn")
+    )
 
-    password = "zlwcqrdmskchhfrn"  # paste the 16‑digit app password
+    # Office365 App Password (move to environment variable later)
+    password = "zlwcqrdmskchhfrn"
 
-    msg = MIMEText(body)
+    # Build HTML email
+    msg = MIMEText(body, "html")
     msg["Subject"] = subject
     msg["From"] = username
     msg["To"] = to_email
@@ -111,10 +144,12 @@ def send_email_smtp(to_email, subject, body):
         server.login(username, password)
         server.sendmail(username, [to_email], msg.as_string())
         server.quit()
-        print("SMTP email sent successfully")
+
+        print(f"SMTP email sent successfully to {to_email}")
         return True
+
     except Exception as e:
-        print("SMTP ERROR:", e)
+        print(f"SMTP ERROR sending to {to_email}: {e}")
         return False
 
 
@@ -158,38 +193,128 @@ def send_email_via_graph(to_email, subject, body):
 def send_approval_email(to_email, booking_id, token):
     subject = "Vehicle Booking Approval Required"
 
-    body = f"""
-A new vehicle booking requires your approval.
+    content = f"""
+    A new vehicle booking requires your approval.<br><br>
 
-Booking ID: {booking_id}
+    <b>Booking ID:</b> {booking_id}<br><br>
 
-Approve or reject here:
-http://localhost:5000/approve?token={token}
+    <a href="http://localhost:5000/approve?token={token}"
+       style="display:inline-block; padding:10px 18px; background:#0d47a1; color:white;
+              text-decoration:none; border-radius:6px; font-weight:600;">
+        Approve / Reject Booking
+    </a>
+    """
 
-This is an automated message from the Vehicle Tracker system.
-"""
-
+    body = build_html_email(subject, content)
     send_email_smtp(to_email, subject, body)
-
-
-
 
 
 
 def send_requester_notification(to_email, decision, reason):
     subject = f"Your Booking Has Been {decision.capitalize()}"
 
-    body = f"""
-Your vehicle booking has been {decision}.
+    # Build the HTML content
+    content = f"""
+    Your vehicle booking has been <b>{decision}</b>.<br><br>
 
-Rejection reason (if any):
-{reason}
+    <b>Rejection reason (if any):</b><br>
+    {reason if reason else "No reason provided."}<br><br>
 
-This is an automated message from the Vehicle Tracker system.
-"""
+    If you have questions, please contact your supervisor.
+    """
 
+    # Wrap inside the HTML template
+    body = build_html_email(subject, content)
+
+    # Send the email
     send_email_smtp(to_email, subject, body)
 
+def notify_technician_jobcard_assigned(jobcard_id, technician_id):
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    # Get jobcard + technician info
+    row = cursor.execute("""
+        SELECT j.description, v.reg, u.email
+        FROM jobcards j
+        JOIN vehicles v ON j.vehicle_id = v.id
+        JOIN users u ON u.id = ?
+        WHERE j.id = ?
+    """, (technician_id, jobcard_id)).fetchone()
+
+    connection.close()
+
+    subject = "New Jobcard Assigned to You"
+
+    content = f"""
+    A new jobcard has been assigned to you.<br><br>
+
+    <b>Vehicle:</b> {row[1]}<br>
+    <b>Description:</b> {row[0]}<br><br>
+
+    Please log in to the Vehicle Tracker system to view and complete the task.
+    """
+
+    body = build_html_email(subject, content)
+    send_email_smtp(row[2], subject, body)
+
+def notify_supervisor_jobcard_completed(to_email, jobcard_id):
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    row = cursor.execute("""
+        SELECT j.description, v.reg
+        FROM jobcards j
+        JOIN vehicles v ON j.vehicle_id = v.id
+        WHERE j.id = ?
+    """, (jobcard_id,)).fetchone()
+
+    connection.close()
+
+    subject = "Jobcard Completed"
+
+    content = f"""
+    A jobcard has been marked as completed.<br><br>
+
+    <b>Vehicle:</b> {row[1]}<br>
+    <b>Description:</b> {row[0]}<br><br>
+
+    Please log in to review and close the jobcard.
+    """
+
+    body = build_html_email(subject, content)
+
+    # TEMP: send to yourself until supervisor emails exist
+    send_email_smtp(to_email, subject, body)
+
+
+def notify_creator_jobcard_declined(to_email, jobcard_id):
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    row = cursor.execute("""
+        SELECT j.description, v.reg
+        FROM jobcards j
+        JOIN vehicles v ON j.vehicle_id = v.id
+        WHERE j.id = ?
+    """, (jobcard_id,)).fetchone()
+
+    connection.close()
+
+    subject = "Jobcard Declined"
+
+    content = f"""
+    A jobcard you created has been declined.<br><br>
+
+    <b>Vehicle:</b> {row[1]}<br>
+    <b>Description:</b> {row[0]}<br><br>
+
+    Please review the jobcard and make any required changes.
+    """
+
+    body = build_html_email(subject, content)
+
+    send_email_smtp(to_email, subject, body)
 
 
 import requests
@@ -951,15 +1076,25 @@ def create_jobcard():
 
         connection = sqlite3.connect("database.db")
         cursor = connection.cursor()
+
+        # Insert jobcard with correct initial status
         cursor.execute("""
-            INSERT INTO jobcards (vehicle_id, created_by, description)
-            VALUES (?, ?, ?)
+            INSERT INTO jobcards (vehicle_id, created_by, description, status)
+            VALUES (?, ?, ?, 'pending_supervisor')
         """, (vehicle_id, user_id, description))
+
+        jobcard_id = cursor.lastrowid
         connection.commit()
         connection.close()
 
-        flash("Jobcard created.", "success")
-        return redirect("/jobcards")   # redirect to dashboard, not create page
+        # TEMP: until real supervisors exist in V2
+        supervisor_email = "alpha.bah@changanuk.com"
+
+        # Notify supervisor that a new jobcard is waiting for review
+        notify_supervisor_jobcard_submitted(supervisor_email, jobcard_id)
+
+        flash("Jobcard created and sent to supervisor.", "success")
+        return redirect("/jobcards")
 
     # GET: load vehicles for dropdown
     connection = sqlite3.connect("database.db")
@@ -980,11 +1115,13 @@ def jobcards_home():
     role = session.get("role")
     user_id = session.get("user_id")  # optional
 
-    ...
-
-
     connection = sqlite3.connect("database.db")
     cursor = connection.cursor()
+
+# Fetch all technicians (TEMP: fetch all users until roles are added)
+    technicians = cursor.execute("""
+        SELECT id, name FROM users
+    """).fetchall()
 
     # Supervisor sees ALL jobcards
     if role in ["admin", "superuser"]:
@@ -1026,7 +1163,11 @@ def jobcards_home():
 
     connection.close()
 
-    return render_template("jobcards_home.html", jobcards=jobcards, role=role)
+    return render_template("jobcards_home.html", 
+                       jobcards=jobcards, 
+                       role=role,
+                       technicians=technicians)
+
 
 @app.route("/booking/<int:id>")
 def booking_details(id):
@@ -1054,6 +1195,248 @@ def booking_details(id):
 
 
 
+@app.route("/jobcards/<int:id>/approve")
+def approve_jobcard(id):
+    if "email" not in session:
+        return redirect("/login")
+
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    # Get creator email BEFORE updating
+    creator_email = cursor.execute("""
+        SELECT u.email
+        FROM jobcards j
+        JOIN users u ON j.created_by = u.id
+        WHERE j.id = ?
+    """, (id,)).fetchone()[0]
+
+    # Update status
+    cursor.execute("""
+        UPDATE jobcards
+        SET status = 'approved'
+        WHERE id = ?
+    """, (id,))
+
+    connection.commit()
+    connection.close()
+
+    # Send email to creator
+    notify_creator_jobcard_approved(creator_email, id)
+
+    flash("Jobcard approved.", "success")
+    return redirect("/jobcards")
+
+
+
+@app.route("/jobcards/<int:id>/decline")
+def decline_jobcard(id):
+    if "email" not in session:
+        return redirect("/login")
+
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    # Get creator email BEFORE updating
+    creator_email = cursor.execute("""
+        SELECT u.email
+        FROM jobcards j
+        JOIN users u ON j.created_by = u.id
+        WHERE j.id = ?
+    """, (id,)).fetchone()[0]
+
+    # Update status
+    cursor.execute("""
+        UPDATE jobcards
+        SET status = 'declined'
+        WHERE id = ?
+    """, (id,))
+
+    connection.commit()
+    connection.close()
+
+    # Send email to creator
+    notify_creator_jobcard_declined(creator_email, id)
+
+    flash("Jobcard declined.", "danger")
+    return redirect("/jobcards")
+
+
+
+
+@app.route("/jobcards/<int:id>/assign", methods=["POST"])
+def assign_jobcard(id):
+    if session.get("role") not in ["admin", "superuser"]:
+        return redirect("/unauthorized")
+
+    technician_id = request.form.get("technician_id")
+
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        UPDATE jobcards
+        SET assigned_to = ?, status = 'assigned'
+        WHERE id = ?
+    """, (technician_id, id))
+
+    connection.commit()
+    connection.close()
+
+    # ⭐ SEND EMAIL HERE
+    notify_technician_jobcard_assigned(id, technician_id)
+
+    flash("Jobcard assigned to technician.", "success")
+    return redirect("/jobcards")
+
+
+
+@app.route("/jobcards/<int:id>/complete")
+def complete_jobcard(id):
+    if "email" not in session:
+        return redirect("/login")
+
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    # TEMP: until real supervisors exist
+    supervisor_email = "alpha.bah@changanuk.com"
+
+    # Update status
+    cursor.execute("""
+        UPDATE jobcards
+        SET status = 'completed'
+        WHERE id = ?
+    """, (id,))
+
+    connection.commit()
+    connection.close()
+
+    # FIX: pass BOTH required arguments
+    notify_supervisor_jobcard_completed(supervisor_email, id)
+
+    flash("Jobcard marked as completed.", "success")
+    return redirect("/jobcards")
+
+
+
+
+@app.route("/jobcards/<int:id>/close")
+def close_jobcard(id):
+    if "email" not in session:
+        return redirect("/login")
+
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    # Get creator email BEFORE updating
+    creator_email = cursor.execute("""
+        SELECT u.email
+        FROM jobcards j
+        JOIN users u ON j.created_by = u.id
+        WHERE j.id = ?
+    """, (id,)).fetchone()[0]
+
+    # Update status
+    cursor.execute("""
+        UPDATE jobcards
+        SET status = 'closed'
+        WHERE id = ?
+    """, (id,))
+
+    connection.commit()
+    connection.close()
+
+    # Send email to creator
+    notify_creator_jobcard_closed(creator_email, id)
+
+    flash("Jobcard closed.", "info")
+    return redirect("/jobcards")
+
+
+def notify_creator_jobcard_closed(to_email, jobcard_id):
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    row = cursor.execute("""
+        SELECT j.description, v.reg
+        FROM jobcards j
+        JOIN vehicles v ON j.vehicle_id = v.id
+        WHERE j.id = ?
+    """, (jobcard_id,)).fetchone()
+
+    connection.close()
+
+    subject = "Jobcard Closed"
+
+    content = f"""
+    A jobcard you created has been closed.<br><br>
+
+    <b>Vehicle:</b> {row[1]}<br>
+    <b>Description:</b> {row[0]}<br><br>
+
+    This jobcard is now fully completed and archived.
+    """
+
+    body = build_html_email(subject, content)
+
+    send_email_smtp(to_email, subject, body)
+
+def notify_creator_jobcard_approved(to_email, jobcard_id):
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    row = cursor.execute("""
+        SELECT j.description, v.reg
+        FROM jobcards j
+        JOIN vehicles v ON j.vehicle_id = v.id
+        WHERE j.id = ?
+    """, (jobcard_id,)).fetchone()
+
+    connection.close()
+
+    subject = "Jobcard Approved"
+
+    content = f"""
+    A jobcard you created has been approved.<br><br>
+
+    <b>Vehicle:</b> {row[1]}<br>
+    <b>Description:</b> {row[0]}<br><br>
+
+    You may now proceed to the next stage or review the approved work.
+    """
+
+    body = build_html_email(subject, content)
+
+    send_email_smtp(to_email, subject, body)
+
+def notify_supervisor_jobcard_submitted(to_email, jobcard_id):
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    row = cursor.execute("""
+        SELECT j.description, v.reg
+        FROM jobcards j
+        JOIN vehicles v ON j.vehicle_id = v.id
+        WHERE j.id = ?
+    """, (jobcard_id,)).fetchone()
+
+    connection.close()
+
+    subject = "Jobcard Submitted"
+
+    content = f"""
+    A jobcard has been submitted for your review.<br><br>
+
+    <b>Vehicle:</b> {row[1]}<br>
+    <b>Description:</b> {row[0]}<br><br>
+
+    Please log in to review and approve the jobcard.
+    """
+
+    body = build_html_email(subject, content)
+
+    send_email_smtp(to_email, subject, body)
 
 
 if __name__ == "__main__":

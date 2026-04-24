@@ -53,7 +53,7 @@
                     {% endif %}
                 {% endif %}
 
-                {% if role == "technician" and jc[3] == "assigned" %}
+                {% if jc[3] == "assigned" %}
                     <a href="/jobcards/{{ jc[0] }}/complete" class="btn btn-success btn-sm">Mark Completed</a>
                 {% endif %}
             </td>
