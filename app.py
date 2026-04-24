@@ -335,6 +335,9 @@ app.secret_key = os.getenv("SECRET_KEY")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 from create_tables import create_all_tables
+from create_tables import create_all_tables
+create_all_tables()
+
 
 create_all_tables()   # ⭐ Ensures DB exists on Railway
 
