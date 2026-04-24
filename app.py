@@ -122,21 +122,11 @@ def build_html_email(title, content):
 
 
 def send_email_smtp(to_email, subject, body):
-    smtp_server = "smtp.office365.com"
-    smtp_port = 587
+    smtp_server = os.getenv("SMTP_SERVER")
+    smtp_port = int(os.getenv("SMTP_PORT"))
+    username = os.getenv("SMTP_EMAIL")
+    password = os.getenv("SMTP_PASSWORD")
 
-    # Extract logged‑in user's email from Azure claims
-    user_claims = session.get("user", {})
-    username = (
-        user_claims.get("email")
-        or user_claims.get("preferred_username")
-        or user_claims.get("upn")
-    )
-
-    # Office365 App Password (move to environment variable later)
-    password = "zlwcqrdmskchhfrn"
-
-    # Build HTML email
     msg = MIMEText(body, "html")
     msg["Subject"] = subject
     msg["From"] = username
@@ -148,7 +138,6 @@ def send_email_smtp(to_email, subject, body):
         server.login(username, password)
         server.sendmail(username, [to_email], msg.as_string())
         server.quit()
-
         print(f"SMTP email sent successfully to {to_email}")
         return True
 
