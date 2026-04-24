@@ -1,22 +1,22 @@
 import sqlite3
 
-connection = sqlite3.connect("database.db", timeout=5)
-cursor = connection.cursor()
+# CHANGE THIS to your real email if needed
+YOUR_EMAIL = "Alpha.Bah@changanuk.com"
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS vehicles (
-               id INTEGER PRIMARY KEY AUTOINCREMENT,
-               reg TEXT NOT NULL,
-               vin TEXT NOT NULL,
-               model TEXT NOT NULL,
-               status TEXT,
-               current_user TEXT,
-               current_mileage INTEGER,
-               last_checkin TEXT,
-               last_checkout TEXT
-                     
-               );
-""")
+def make_admin():
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
 
-connection.commit()
-connection.close()
+    cursor.execute("""
+        UPDATE users
+        SET role = 'superuser'
+        WHERE email = ?
+    """, (YOUR_EMAIL,))
+
+    connection.commit()
+    connection.close()
+
+    print(f"{YOUR_EMAIL} is now a superuser.")
+
+if __name__ == "__main__":
+    make_admin()
