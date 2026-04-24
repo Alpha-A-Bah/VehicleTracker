@@ -10,6 +10,7 @@ import sqlite3
 from datetime import datetime
 
 
+
 load_dotenv()
 
 CLIENT_ID = os.getenv("CLIENT_ID")
@@ -27,6 +28,9 @@ import smtplib
 from email.mime.text import MIMEText
 
 import sqlite3
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+
 
 def get_db_connection():
     return sqlite3.connect("database.db")
@@ -327,7 +331,7 @@ from flask import session
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
 
-
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 
 def login_required(f):
