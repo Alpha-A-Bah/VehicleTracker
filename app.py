@@ -322,8 +322,11 @@ from flask import session
 
 
 
+
+
 app = Flask(__name__)
-app.secret_key = "supersecretkey"
+app.secret_key = os.getenv("SECRET_KEY")
+
 
 
 
