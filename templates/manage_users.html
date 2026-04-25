@@ -29,13 +29,14 @@
                     <form action="/admin/update_role" method="POST" class="d-flex">
                         <input type="hidden" name="user_id" value="{{ user[0] }}">
                         <select name="role" class="form-select me-2">
-                            <option value="user" {% if user[3] == "user" %}selected{% endif %}>User</option>
-                            <option value="manager" {% if user[3] == "manager" %}selected{% endif %}>Manager</option>
-                            <option value="admin" {% if user[3] == "admin" %}selected{% endif %}>Admin</option>
-                            <option value="superuser" {% if user[3] == "superuser" %}selected{% endif %}>Superuser</option>
-                        </select>
-                        <button class="btn btn-primary btn-sm">Update</button>
-                    </form>
+                                <option value="user" {% if user[3] == "user" %}selected{% endif %}>User</option>
+                                <option value="technician" {% if user[3] == "technician" %}selected{% endif %}>Technician</option>
+                                <option value="manager" {% if user[3] == "manager" %}selected{% endif %}>Manager</option>
+                                <option value="admin" {% if user[3] == "admin" %}selected{% endif %}>Admin</option>
+                                <option value="superuser" {% if user[3] == "superuser" %}selected{% endif %}>Superuser</option>
+                            </select>
+                            </form>
+                    
                 </td>
             </tr>
             {% endfor %}

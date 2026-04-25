@@ -310,7 +310,7 @@ from flask import session
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY")
+app.secret_key = os.getenv("SECRET_KEY", "dev_secret_key")
 
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
@@ -1078,15 +1078,24 @@ def create_jobcard():
     if request.method == "POST":
         vehicle_id = request.form["vehicle_id"]
         description = request.form["description"]
+        available_date = request.form["available_date"]
+        required_by = request.form["required_by"]
 
         connection = sqlite3.connect("database.db")
         cursor = connection.cursor()
 
-        # Insert jobcard with correct initial status
+        # Insert jobcard with new date fields + correct initial status
         cursor.execute("""
-            INSERT INTO jobcards (vehicle_id, created_by, description, status)
-            VALUES (?, ?, ?, 'pending_supervisor')
-        """, (vehicle_id, user_id, description))
+            INSERT INTO jobcards (
+                vehicle_id,
+                created_by,
+                description,
+                status,
+                available_date,
+                required_by
+            )
+            VALUES (?, ?, ?, 'pending_supervisor', ?, ?)
+        """, (vehicle_id, user_id, description, available_date, required_by))
 
         jobcard_id = cursor.lastrowid
         connection.commit()
@@ -1110,6 +1119,7 @@ def create_jobcard():
     connection.close()
 
     return render_template("jobcards_create.html", vehicles=vehicles)
+
 
 
 @app.route("/jobcards")
@@ -1442,6 +1452,38 @@ def notify_supervisor_jobcard_submitted(to_email, jobcard_id):
     body = build_html_email(subject, content)
 
     send_email_smtp(to_email, subject, body)
+
+
+@app.route("/jobcards/details/<int:jobcard_id>")
+def jobcard_details(jobcard_id):
+    connection = sqlite3.connect("database.db")
+    cursor = connection.cursor()
+
+    jc = cursor.execute("""
+    SELECT 
+        jobcards.id,
+        vehicles.reg,
+        jobcards.description,
+        jobcards.status,
+        creator.name AS creator_name,
+        jobcards.created_at,
+        jobcards.available_date,
+        jobcards.required_by,
+        tech.name AS technician_name
+    FROM jobcards
+    JOIN vehicles ON jobcards.vehicle_id = vehicles.id
+    JOIN users AS creator ON jobcards.created_by = creator.id
+    LEFT JOIN users AS tech ON jobcards.assigned_to = tech.id
+    WHERE jobcards.id = ?
+""", (jobcard_id,)).fetchone()
+
+
+    connection.close()
+
+    if not jc:
+        return "<p>Jobcard not found.</p>"
+
+    return render_template("jobcard_modal.html", jc=jc)
 
 
 if __name__ == "__main__":

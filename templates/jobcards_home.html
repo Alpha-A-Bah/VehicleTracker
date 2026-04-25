@@ -31,6 +31,12 @@
             <td>{{ jc[4] }}</td>
 
             <td>
+
+                <!-- ⭐ NEW: View Details button -->
+                <button class="btn btn-info btn-sm mb-1" onclick="openJobcardModal({{ jc[0] }})">
+                    View Details
+                </button>
+
                 {% if role in ["admin", "superuser"] %}
                     {% if jc[3] == "pending_supervisor" %}
                         <a href="/jobcards/{{ jc[0] }}/approve" class="btn btn-success btn-sm">Approve</a>
@@ -61,5 +67,40 @@
         {% endfor %}
     </tbody>
 </table>
+
+<!-- Jobcard Details Modal -->
+<div class="modal fade" id="jobcardModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Jobcard Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body" id="jobcardModalBody">
+        Loading...
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openJobcardModal(jobcardId) {
+    fetch(`/jobcards/details/${jobcardId}`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById("jobcardModalBody").innerHTML = html;
+            var modal = new bootstrap.Modal(document.getElementById("jobcardModal"));
+            modal.show();
+        })
+        .catch(err => {
+            document.getElementById("jobcardModalBody").innerHTML = "Error loading jobcard details.";
+        });
+}
+</script>
 
 {% endblock %}

@@ -21,6 +21,18 @@
         <textarea name="description" class="form-control" rows="4" required></textarea>
     </div>
 
+    <!-- ⭐ NEW FIELD: Vehicle Availability Date -->
+    <div class="mb-3">
+        <label class="form-label">Vehicle Availability Date</label>
+        <input type="date" name="available_date" class="form-control" required>
+    </div>
+
+    <!-- ⭐ NEW FIELD: Required By / Completion Date -->
+    <div class="mb-3">
+        <label class="form-label">Required By / Completion Date</label>
+        <input type="date" name="required_by" class="form-control" required>
+    </div>
+
     <button type="submit" class="btn btn-primary">Submit Jobcard</button>
 </form>
 {% endblock %}

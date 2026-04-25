@@ -1,0 +1,52 @@
+<div class="container-fluid">
+
+    <div class="row mb-2">
+        <div class="col-4 fw-bold">Jobcard ID:</div>
+        <div class="col-8">{{ jc[0] }}</div>
+    </div>
+
+    <div class="row mb-2">
+        <div class="col-4 fw-bold">Vehicle:</div>
+        <div class="col-8">{{ jc[1] }}</div>
+    </div>
+
+    <div class="row mb-2">
+        <div class="col-4 fw-bold">Description:</div>
+        <div class="col-8">{{ jc[2] }}</div>
+    </div>
+
+    <div class="row mb-2">
+        <div class="col-4 fw-bold">Status:</div>
+        <div class="col-8 text-capitalize">{{ jc[3] }}</div>
+    </div>
+
+    <div class="row mb-2">
+        <div class="col-4 fw-bold">Created By:</div>
+        <div class="col-8">{{ jc[4] }}</div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-4 fw-bold">Created At:</div>
+        <div class="col-8">{{ jc[5] }}</div>
+    </div>
+
+    <hr>
+
+    <div class="row mb-2">
+        <div class="col-4 fw-bold">Vehicle Available From:</div>
+        <div class="col-8">{{ jc[6] }}</div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-4 fw-bold">Required By:</div>
+        <div class="col-8">{{ jc[7] }}</div>
+    </div>
+
+    {% if jc[8] %}
+    <div class="row mb-2">
+        <div class="col-4 fw-bold">Assigned Technician:</div>
+        <div class="col-8">{{ jc[8] }}</div>
+    </div>
+    {% endif %}
+
+</div>
