@@ -720,6 +720,7 @@ def login():
 
     # ⭐ Always use the production redirect URI from Railway
     redirect_uri = os.getenv("REDIRECT_URI")
+    print("REDIRECT_URI IN LOGIN:", os.getenv("REDIRECT_URI"))
 
     auth_url = msal_app.get_authorization_request_url(
         scopes=SCOPE if isinstance(SCOPE, list) else SCOPE.split(),
