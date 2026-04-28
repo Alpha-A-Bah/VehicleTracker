@@ -719,12 +719,12 @@ def login():
     )
 
     # ⭐ Always use the production redirect URI from Railway
-    redirect_uri = os.getenv("REDIRECT_URL")
-    print("REDIRECT_URI IN LOGIN:", os.getenv("REDIRECT_URL"))
+    redirect_url = os.getenv("REDIRECT_URL")
+    print("REDIRECT_URL IN LOGIN:", os.getenv("REDIRECT_URL"))
 
     auth_url = msal_app.get_authorization_request_url(
         scopes=SCOPE if isinstance(SCOPE, list) else SCOPE.split(),
-        redirect_uri=redirect_uri,
+        redirect_url=redirect_url,
         prompt="select_account"
     )
 
@@ -743,12 +743,12 @@ def authorized():
     )
 
     code = request.args.get("code")
-    redirect_uri = os.getenv("REDIRECT_URI")   # ⭐ Always use production redirect
+    redirect_url = os.getenv("REDIRECT_URL")   # ⭐ Always use production redirect
 
     result = msal_app.acquire_token_by_authorization_code(
         code,
         scopes=SCOPE if isinstance(SCOPE, list) else SCOPE.split(),
-        redirect_uri=redirect_uri
+        redirect_url=redirect_url
     )
 
     # ⭐ Handle login failure
@@ -808,7 +808,7 @@ def logout():
     session.clear()
     return redirect(
         "https://login.microsoftonline.com/common/oauth2/v2.0/logout"
-        "?post_logout_redirect_uri=http://localhost:5000"
+        "?post_logout_redirect_url=http://localhost:5000"
     )
 
 
