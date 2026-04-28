@@ -10,6 +10,13 @@ import sqlite3
 from datetime import datetime
 
 
+# Use persistent disk on Render, normal file locally
+if os.getenv("RENDER"):
+    DB_PATH = "/var/data/database.db"
+else:
+    DB_PATH = "database.db"
+
+
 
 load_dotenv()
 
@@ -33,7 +40,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 
 def get_db_connection():
-    return sqlite3.connect("database.db")
+    return sqlite3.connect(DB_PATH)
 
 
 def ensure_user_exists(email, name):
@@ -57,7 +64,7 @@ def ensure_user_exists(email, name):
 from flask import session
 
 def load_user_role_into_session(email, name):
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     cursor.execute("SELECT role, name FROM users WHERE email = ?", (email,))
@@ -214,7 +221,7 @@ def send_requester_notification(to_email, decision, reason):
     send_email_smtp(to_email, subject, body)
 
 def notify_technician_jobcard_assigned(jobcard_id, technician_id):
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     # Get jobcard + technician info
@@ -243,7 +250,7 @@ def notify_technician_jobcard_assigned(jobcard_id, technician_id):
     send_email_smtp(row[2], subject, body)
 
 def notify_supervisor_jobcard_completed(to_email, jobcard_id):
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     row = cursor.execute("""
@@ -273,7 +280,7 @@ def notify_supervisor_jobcard_completed(to_email, jobcard_id):
 
 
 def notify_creator_jobcard_declined(to_email, jobcard_id):
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     row = cursor.execute("""
@@ -337,7 +344,7 @@ def login_required(f):
 @login_required
 @require_role("manager", "admin", "superuser")
 def vehicles():
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     cursor.execute("SELECT * FROM vehicles;")
@@ -356,7 +363,7 @@ def add_vehicle():
     owner = request.form["owner"]
     owner_email = request.form["owner_email"]
 
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     cursor.execute("""
@@ -376,7 +383,7 @@ def add_vehicle():
 
 @app.route("/delete_vehicle/<int:vehicle_id>", methods=["POST"])
 def delete_vehicle(vehicle_id):
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     cursor.execute("DELETE FROM vehicles WHERE id = ?", (vehicle_id,))
@@ -396,7 +403,7 @@ def edit_vehicle(vehicle_id):
     owner = request.form["owner"]
     owner_email = request.form["owner_email"]
 
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     cursor.execute("""
@@ -415,7 +422,7 @@ def edit_vehicle(vehicle_id):
 @app.route("/")
 @login_required
 def booking_page():
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     # Available vehicles
@@ -608,7 +615,7 @@ def bookings():
 @app.route("/log_journey/<int:booking_id>", methods=["POST"])
 @login_required
 def log_journey(booking_id):
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     # Get booking info
@@ -664,7 +671,7 @@ def logbook_page():
     vehicle_id = request.args.get("vehicle_id")
     print("DEBUG vehicle_id =", vehicle_id)
 
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     if vehicle_id:
@@ -770,7 +777,7 @@ def authorized():
     load_user_role_into_session(email, name)
 
     # ⭐ Load user_id into session
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
     user_row = cursor.execute(
         "SELECT id FROM users WHERE email = ?", (email,)
@@ -822,7 +829,7 @@ def add_header(response):
 def approve_page():
     token = request.args.get("token")
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     # Fetch booking using the token
@@ -910,7 +917,7 @@ def approve_confirm():
     decision = request.form["decision"]
     rejection_reason = request.form.get("rejection_reason", "")
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     # ⭐ Get requester email from the booking
@@ -964,7 +971,7 @@ def approve_confirm():
 
 @app.route('/booking/<int:booking_id>/notes')
 def get_booking_notes(booking_id):
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     cursor.execute("SELECT notes FROM bookings WHERE id = ?", (booking_id,))
@@ -981,7 +988,7 @@ def get_booking_notes(booking_id):
 @app.route("/admin/users")
 
 def manage_users():
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     cursor.execute("SELECT id, email, name, role FROM users")
@@ -996,7 +1003,7 @@ def update_role():
     user_id = request.form["user_id"]
     new_role = request.form["role"]
 
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     cursor.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
@@ -1015,7 +1022,7 @@ def calendar_view():
 @app.route("/api/bookings")
 @login_required
 def api_bookings():
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     cursor.execute("""
@@ -1082,7 +1089,7 @@ def create_jobcard():
         available_date = request.form["available_date"]
         required_by = request.form["required_by"]
 
-        connection = sqlite3.connect("database.db")
+        connection = sqlite3.connect(DB_PATH)
         cursor = connection.cursor()
 
         # Insert jobcard with new date fields + correct initial status
@@ -1112,7 +1119,7 @@ def create_jobcard():
         return redirect("/jobcards")
 
     # GET: load vehicles for dropdown
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
     vehicles = cursor.execute(
         "SELECT id, reg FROM vehicles ORDER BY reg"
@@ -1131,7 +1138,7 @@ def jobcards_home():
     role = session.get("role")
     user_id = session.get("user_id")  # optional
 
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
 # Fetch all technicians (TEMP: fetch all users until roles are added)
@@ -1187,7 +1194,7 @@ def jobcards_home():
 
 @app.route("/booking/<int:id>")
 def booking_details(id):
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     row = cursor.execute("""
@@ -1216,7 +1223,7 @@ def approve_jobcard(id):
     if "email" not in session:
         return redirect("/login")
 
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     # Get creator email BEFORE updating
@@ -1250,7 +1257,7 @@ def decline_jobcard(id):
     if "email" not in session:
         return redirect("/login")
 
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     # Get creator email BEFORE updating
@@ -1287,7 +1294,7 @@ def assign_jobcard(id):
 
     technician_id = request.form.get("technician_id")
 
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     cursor.execute("""
@@ -1312,7 +1319,7 @@ def complete_jobcard(id):
     if "email" not in session:
         return redirect("/login")
 
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     # TEMP: until real supervisors exist
@@ -1342,7 +1349,7 @@ def close_jobcard(id):
     if "email" not in session:
         return redirect("/login")
 
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     # Get creator email BEFORE updating
@@ -1371,7 +1378,7 @@ def close_jobcard(id):
 
 
 def notify_creator_jobcard_closed(to_email, jobcard_id):
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     row = cursor.execute("""
@@ -1399,7 +1406,7 @@ def notify_creator_jobcard_closed(to_email, jobcard_id):
     send_email_smtp(to_email, subject, body)
 
 def notify_creator_jobcard_approved(to_email, jobcard_id):
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     row = cursor.execute("""
@@ -1427,7 +1434,7 @@ def notify_creator_jobcard_approved(to_email, jobcard_id):
     send_email_smtp(to_email, subject, body)
 
 def notify_supervisor_jobcard_submitted(to_email, jobcard_id):
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     row = cursor.execute("""
@@ -1457,7 +1464,7 @@ def notify_supervisor_jobcard_submitted(to_email, jobcard_id):
 
 @app.route("/jobcards/details/<int:jobcard_id>")
 def jobcard_details(jobcard_id):
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
     jc = cursor.execute("""
