@@ -566,7 +566,7 @@ def checkin_vehicle(booking_id):
     notes = request.form.get("notes", "")
     time_in = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    connection = sqlite3.connect("database.db", timeout=5)
+    connection = sqlite3.connect(DB_PATH, timeout=5)
     cursor = connection.cursor()
 
     # Update booking record
@@ -596,7 +596,7 @@ def checkin_vehicle(booking_id):
 @app.route("/bookings")
 @require_role("admin", "superuser")
 def bookings():
-    connection = sqlite3.connect("database.db", timeout=10)
+    connection = sqlite3.connect(DB_PATH, timeout=10)
     cursor = connection.cursor()
 
     cursor.execute("""
