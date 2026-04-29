@@ -16,7 +16,7 @@ if os.getenv("RENDER"):
 else:
     DB_PATH = "database.db"
 
-
+APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5000")
 
 load_dotenv()
 
@@ -180,12 +180,14 @@ def send_email_smtp(to_email, subject, body):
 def send_approval_email(to_email, booking_id, token):
     subject = "Vehicle Booking Approval Required"
 
+    approval_url = f"{APP_BASE_URL}/approve?token={token}"
+
     content = f"""
     A new vehicle booking requires your approval.<br><br>
 
     <b>Booking ID:</b> {booking_id}<br><br>
 
-    <a href="http://localhost:5000/approve?token={token}"
+    <a href="{approval_url}"
        style="display:inline-block; padding:10px 18px; background:#0d47a1; color:white;
               text-decoration:none; border-radius:6px; font-weight:600;">
         Approve / Reject Booking
@@ -198,6 +200,7 @@ def send_approval_email(to_email, booking_id, token):
         send_email_smtp(to_email, subject, body)
     except Exception as e:
         print("EMAIL ERROR in send_approval_email:", e)
+
 
 
 
