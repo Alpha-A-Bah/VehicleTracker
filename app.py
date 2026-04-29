@@ -1493,6 +1493,14 @@ def jobcard_details(jobcard_id):
 
     return render_template("jobcard_modal.html", jc=jc)
 
+@app.route("/debug-vehicles")
+def debug_vehicles():
+    import sqlite3
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    rows = cursor.execute("PRAGMA table_info(vehicles)").fetchall()
+    connection.close()
+    return str(rows)
 
 
 
