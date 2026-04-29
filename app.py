@@ -500,7 +500,7 @@ def checkout_vehicle(vehicle_id):
 
     approval_token = secrets.token_urlsafe(32)
 
-    connection = sqlite3.connect("database.db", timeout=5)
+    connection = sqlite3.connect(DB_PATH, timeout=5)
     cursor = connection.cursor()
 
     # ⭐ Get vehicle owner's email
